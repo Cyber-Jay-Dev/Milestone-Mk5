@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "25281652415",
+    "project_id": "capstone-ya",
+    "storage_bucket": "capstone-ya.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25281652415:android:b6c2ae4344f032fa35c80a",
+        "android_client_info": {
+          "package_name": "com.example.milestonemk_3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0weETJI8P2-wSaHatzlh7NTZ0YcSFp5U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25281652415:android:7cfcf9a06f59780a35c80a",
+        "android_client_info": {
+          "package_name": "com.example.milestonemk_4"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0weETJI8P2-wSaHatzlh7NTZ0YcSFp5U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

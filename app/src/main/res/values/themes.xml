@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.MilestoneMk4" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/Emerald</item>
+        <item name="colorOnPrimary">@color/White</item>
+        <item name="android:colorControlNormal">@color/White</item>
+        <item name="android:actionMenuTextColor">@color/White</item>
+        <item name="android:actionMenuTextAppearance">@style/WhiteText</item>
+        <item name="android:textColorHighlight">#DADADA</item>
+    </style>
+
+    <style name="Theme.MilestoneMk4" parent="Base.Theme.MilestoneMk4"/>
+
+    <style name="WhiteText">
+        <item name="android:textColor">@color/White</item>
+    </style>
+</resources>
+

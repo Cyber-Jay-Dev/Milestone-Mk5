@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_margin="16dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="8dp"
+        android:orientation="vertical">
+<!--   Project Title     -->
+        <TextView
+            android:id="@+id/project_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Project Title"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/Black"/>
+<!--    Pending tasks counter    -->
+        <TextView
+            android:id="@+id/project_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0 Pending Tasks"
+            android:textColor="@color/Gray"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="@string/collaborators"
+            android:textSize="12sp"/>
+
+        <ImageView
+            android:id="@+id/userpic"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:layout_marginTop="5dp"
+            app:srcCompat="@android:mipmap/sym_def_app_icon" />
+    </LinearLayout>
+    
+
+</androidx.cardview.widget.CardView>
