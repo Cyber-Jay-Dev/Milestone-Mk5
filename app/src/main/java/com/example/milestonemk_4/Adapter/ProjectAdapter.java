@@ -16,7 +16,7 @@ import java.util.List;
 
 
 public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectViewHolder> {
-    private List<Project> projectList;
+    private final List<Project> projectList;
 
     public ProjectAdapter(List<Project> projectList) {
         this.projectList = projectList;
@@ -34,22 +34,19 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
         Project project = projectList.get(position);
         holder.projectTitle.setText(project.getTitle());
 
-//        test
+
         holder.itemView.setOnClickListener(v -> {
-            // Get the context of the clicked item
             Context context = v.getContext();
 
-            // Create an Intent to open the DetailActivity
+
             Intent intent = new Intent(context, project_detail.class);
 
-            // Pass the project data (title and userId) to the DetailActivity
+            // TODO: connect it to firebase
             intent.putExtra("title", project.getTitle());
-            intent.putExtra("userId", project.getUserId());
 
-            // Start the activity
+
             context.startActivity(intent);
         });
-//        end test
     }
 
     @Override

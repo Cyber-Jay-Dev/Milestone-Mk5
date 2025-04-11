@@ -7,7 +7,7 @@ import android.net.NetworkInfo;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
@@ -45,6 +45,8 @@ public class AddProjectFragment extends Fragment {
 
         projectTitle = view.findViewById(R.id.projectTitleInput);
         Button addProjectToDb = view.findViewById(R.id.addprojectItem);
+
+
 
         // Button to add project title to Firestore
         addProjectToDb.setOnClickListener(v -> {
@@ -97,6 +99,7 @@ public class AddProjectFragment extends Fragment {
         }
     }
 
+//    Check if the device is connected to the internet
     private boolean isNetworkAvailable() {
         ConnectivityManager connectivityManager = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (connectivityManager != null) {
@@ -105,7 +108,4 @@ public class AddProjectFragment extends Fragment {
         }
         return false;
     }
-
-
-
 }
