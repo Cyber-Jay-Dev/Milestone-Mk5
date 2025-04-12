@@ -41,8 +41,8 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
         // When an item is clicked, open the project details
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, project_detail.class);
-            intent.putExtra("projectId", project.getId()); // Passing projectId to the next activity
-            intent.putExtra("title", project.getTitle()); // Optional: Passing project title
+            intent.putExtra("projectId", project.getId());
+            intent.putExtra("title", project.getTitle());
             context.startActivity(intent);
         });
     }

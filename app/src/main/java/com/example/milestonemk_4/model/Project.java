@@ -22,4 +22,7 @@ public class Project {
     public String getTitle() {
         return title;
     }
+    public String getUserId() {
+        return userId;
+    }
 }
