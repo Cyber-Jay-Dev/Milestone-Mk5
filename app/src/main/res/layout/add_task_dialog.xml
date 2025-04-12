@@ -33,6 +33,7 @@
             app:layout_constraintEnd_toEndOf="parent">
 
             <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/taskNameInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/enter_task_name" />
@@ -57,10 +58,11 @@
             app:layout_constraintEnd_toStartOf="@id/btn">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/statusInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="none"
-                android:hint="Select Status"
+                android:hint="@string/select_status"
                 app:simpleItems="@array/option_list"/>
 
         </com.google.android.material.textfield.TextInputLayout>

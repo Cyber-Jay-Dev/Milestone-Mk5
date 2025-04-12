@@ -11,20 +11,29 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.milestonemk_4.R;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class project_detail extends AppCompatActivity {
 
     Dialog dialog;
+    FirebaseFirestore db;
 
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_project_detail); // Load activity layout
+        setContentView(R.layout.activity_project_detail);
+
+        db = FirebaseFirestore.getInstance();
 
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
@@ -39,6 +48,13 @@ public class project_detail extends AppCompatActivity {
         dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.dialog_bg));
         dialog.setCancelable(true);
 
+        // Get views from the dialog
+        TextInputEditText taskNameInput = dialog.findViewById(R.id.taskNameInput);
+        MaterialAutoCompleteTextView statusInput = dialog.findViewById(R.id.statusInput);
+        Button submitBtn = dialog.findViewById(R.id.btn);
+
+
+        String projectId = getIntent().getStringExtra("projectId");
         // Set project title
         String title = getIntent().getStringExtra("title");
         TextView titleView = findViewById(R.id.ProjName);
@@ -49,5 +65,36 @@ public class project_detail extends AppCompatActivity {
 
         // Open task dialog
         openTasksDialog.setOnClickListener(view -> dialog.show());
+
+        // Handle task submission
+        submitBtn.setOnClickListener(v -> {
+            String taskName = Objects.requireNonNull(taskNameInput.getText()).toString().trim();
+            String status = Objects.requireNonNull(statusInput.getText()).toString().trim();
+
+            if (taskName.isEmpty() || status.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Create task data map
+            Map<String, Object> taskData = new HashMap<>();
+            taskData.put("taskName", taskName);
+            taskData.put("status", status);
+
+            // Save task as a subcollection of the current project
+            db.collection("projects")
+                    .document(projectId)
+                    .collection("tasks")
+                    .add(taskData)
+                    .addOnSuccessListener(docRef -> {
+                        Toast.makeText(this, "Task added successfully!", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss(); // Close dialog
+                        taskNameInput.setText("");
+                        statusInput.setText("");
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        });
     }
 }

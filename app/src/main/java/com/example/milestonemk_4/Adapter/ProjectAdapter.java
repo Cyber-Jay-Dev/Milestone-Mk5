@@ -6,17 +6,20 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.activitiesUI.project_detail;
 import com.example.milestonemk_4.model.Project;
 
 import java.util.List;
 
-
 public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectViewHolder> {
-    private final List<Project> projectList;
+
+    private List<Project> projectList;
+    private Context context;
 
     public ProjectAdapter(List<Project> projectList) {
         this.projectList = projectList;
@@ -25,8 +28,9 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
     @NonNull
     @Override
     public ProjectViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.project_items, parent, false);
-        return new ProjectViewHolder(view);
+        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.project_items, parent, false);
+        context = parent.getContext();
+        return new ProjectViewHolder(itemView);
     }
 
     @Override
@@ -34,17 +38,11 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
         Project project = projectList.get(position);
         holder.projectTitle.setText(project.getTitle());
 
-
+        // When an item is clicked, open the project details
         holder.itemView.setOnClickListener(v -> {
-            Context context = v.getContext();
-
-
             Intent intent = new Intent(context, project_detail.class);
-
-            // TODO: connect it to firebase
-            intent.putExtra("title", project.getTitle());
-
-
+            intent.putExtra("projectId", project.getId()); // Passing projectId to the next activity
+            intent.putExtra("title", project.getTitle()); // Optional: Passing project title
             context.startActivity(intent);
         });
     }
@@ -55,9 +53,10 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
     }
 
     public static class ProjectViewHolder extends RecyclerView.ViewHolder {
+
         TextView projectTitle;
 
-        public ProjectViewHolder(@NonNull View itemView) {
+        public ProjectViewHolder(View itemView) {
             super(itemView);
             projectTitle = itemView.findViewById(R.id.project_title);
         }

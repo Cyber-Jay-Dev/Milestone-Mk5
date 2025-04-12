@@ -70,6 +70,7 @@ public class HomeFragment extends Fragment {
                             projectList.clear();
                             for (QueryDocumentSnapshot document : task.getResult()) {
                                 Project project = document.toObject(Project.class);
+                                project.setId(document.getId());
                                 projectList.add(project);
                             }
                             adapter.notifyDataSetChanged();
