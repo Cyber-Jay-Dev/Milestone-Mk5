@@ -17,10 +17,11 @@ import com.example.milestonemk_4.model.Task;
 
 
 import java.util.List;
+import java.util.Objects;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
-    private List<Task> taskList;
+    private final List<Task> taskList;
 
     public TaskAdapter(List<Task> taskList) {
         this.taskList = taskList;
@@ -40,11 +41,9 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         holder.taskName.setText(task.getTaskName());
         holder.status.setText(task.getStatus());
 
-        // Get context
         Context context = holder.status.getContext();
 
-        // Get drawable and mutate it to avoid shared state
-        Drawable background = ContextCompat.getDrawable(context, R.drawable.rounded_bg).mutate();
+        Drawable background = Objects.requireNonNull(ContextCompat.getDrawable(context, R.drawable.rounded_bg)).mutate();
 
         if (background instanceof GradientDrawable) {
             GradientDrawable gradientDrawable = (GradientDrawable) background;
@@ -68,7 +67,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.status.setBackground(gradientDrawable);
         }
     }
-
     @Override
     public int getItemCount() {
         return taskList.size();
@@ -77,7 +75,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
         TextView taskName;
         TextView status;
-
         public TaskViewHolder(View view) {
             super(view);
             taskName = view.findViewById(R.id.TaskNameTV);
