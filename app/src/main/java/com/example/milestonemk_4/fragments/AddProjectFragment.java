@@ -1,9 +1,7 @@
 package com.example.milestonemk_4.fragments;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,10 +14,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.example.milestonemk_4.R;
+import com.example.milestonemk_4.utils.NetworkUtils;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -72,20 +70,21 @@ public class AddProjectFragment extends Fragment {
             projectData.put("title", title);
             projectData.put("userId", uid);
 
-            if (!isNetworkAvailable()) {
+            if (!NetworkUtils.isNetworkAvailable(requireContext())) {
                 Toast.makeText(getContext(), "You are offline. Project will sync when online.", Toast.LENGTH_LONG).show();
                 requireActivity().getSupportFragmentManager().popBackStack();
+            } else {
+                db.collection("projects")
+                        .add(projectData)
+                        .addOnSuccessListener(documentReference -> {
+                            Toast.makeText(getContext(), "Project added!", Toast.LENGTH_SHORT).show();
+                            requireActivity().getSupportFragmentManager().popBackStack();
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(getContext(), "Error adding project", Toast.LENGTH_SHORT).show();
+                        });
             }
 
-            db.collection("projects")
-                    .add(projectData)
-                    .addOnSuccessListener(documentReference -> {
-                        Toast.makeText(getContext(), "Project added!", Toast.LENGTH_SHORT).show();
-                        requireActivity().getSupportFragmentManager().popBackStack();
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(getContext(), "Error adding project", Toast.LENGTH_SHORT).show();
-                    });
         } else {
             Toast.makeText(getContext(), "User not logged in!", Toast.LENGTH_SHORT).show();
         }
@@ -100,12 +99,12 @@ public class AddProjectFragment extends Fragment {
     }
 
 //    Check if the device is connected to the internet
-    private boolean isNetworkAvailable() {
-        ConnectivityManager connectivityManager = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (connectivityManager != null) {
-            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-            return activeNetwork != null && activeNetwork.isConnected();
-        }
-        return false;
-    }
+//    private boolean isNetworkAvailable() {
+//        ConnectivityManager connectivityManager = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+//        if (connectivityManager != null) {
+//            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+//            return activeNetwork != null && activeNetwork.isConnected();
+//        }
+//        return false;
+//    }
 }
