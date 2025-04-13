@@ -116,9 +116,7 @@ public class project_detail extends AppCompatActivity {
                         // Reload tasks after adding a new one
                         fetchTasks();
                     })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
+                    .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
         });
     }
 
@@ -140,9 +138,7 @@ public class project_detail extends AppCompatActivity {
                     }
                     taskAdapter.notifyDataSetChanged(); // Notify adapter to update the RecyclerView
                 })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error fetching tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                .addOnFailureListener(e -> Toast.makeText(this, "Error fetching tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     @Override
