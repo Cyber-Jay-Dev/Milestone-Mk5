@@ -24,7 +24,7 @@
             android:textColor="@color/Black"/>
 <!--    Pending tasks counter    -->
         <TextView
-            android:id="@+id/project_tasks"
+            android:id="@+id/project_tasks_num"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="0 Pending Tasks"

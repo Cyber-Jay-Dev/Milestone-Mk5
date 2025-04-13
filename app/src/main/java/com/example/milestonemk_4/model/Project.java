@@ -4,14 +4,19 @@ public class Project {
     private String id;
     private String title;
     private String userId;
+    private int taskCount;
+
 
     public Project() {
     }
 
-    public Project(String title, String userId) {
+    public Project(String title, String userId, int taskCount) {
         this.title = title;
         this.userId = userId;
+        this.taskCount = taskCount;
     }
+    public int getTaskCount() { return taskCount;}
+    public void setTaskCount(int taskCount) { this.taskCount = taskCount;}
     public String getId() {
         return id;
     }

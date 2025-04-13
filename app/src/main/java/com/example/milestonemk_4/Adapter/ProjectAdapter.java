@@ -1,5 +1,6 @@
 package com.example.milestonemk_4.Adapter;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
@@ -18,7 +19,7 @@ import java.util.List;
 
 public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectViewHolder> {
 
-    private List<Project> projectList;
+    private final List<Project> projectList;
     private Context context;
 
     public ProjectAdapter(List<Project> projectList) {
@@ -33,10 +34,12 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
         return new ProjectViewHolder(itemView);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull ProjectViewHolder holder, int position) {
         Project project = projectList.get(position);
         holder.projectTitle.setText(project.getTitle());
+        holder.projectTasknum.setText(project.getTaskCount() + " Pending Tasks");
 
         // When an item is clicked, open the project details
         holder.itemView.setOnClickListener(v -> {
@@ -54,11 +57,13 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ProjectV
 
     public static class ProjectViewHolder extends RecyclerView.ViewHolder {
 
-        TextView projectTitle;
+        TextView projectTitle, projectTasknum;
 
         public ProjectViewHolder(View itemView) {
             super(itemView);
             projectTitle = itemView.findViewById(R.id.project_title);
+            projectTasknum = itemView.findViewById(R.id.project_tasks_num);
+
         }
     }
 }

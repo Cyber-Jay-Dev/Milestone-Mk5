@@ -20,6 +20,7 @@ import com.example.milestonemk_4.model.Project;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -68,18 +69,49 @@ public class HomeFragment extends Fragment {
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             projectList.clear();
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                Project project = document.toObject(Project.class);
-                                project.setId(document.getId());
-                                projectList.add(project);
+                            List<DocumentSnapshot> projectDocs = task.getResult().getDocuments();
+
+                            if (projectDocs.isEmpty()) {
+                                adapter.notifyDataSetChanged();
+                                return;
                             }
-                            adapter.notifyDataSetChanged();
+
+                            for (DocumentSnapshot document : projectDocs) {
+                                Project project = document.toObject(Project.class);
+                                String projectId = document.getId();
+                                assert project != null;
+                                project.setId(projectId);
+
+                                db.collection("projects")
+                                        .document(projectId)
+                                        .collection("tasks")
+                                        .get()
+                                        .addOnSuccessListener(taskSnapshots -> {
+                                            int taskCount = taskSnapshots.size();
+                                            project.setTaskCount(taskCount);
+                                            projectList.add(project);
+
+                                            // Notify when all projects have been processed
+                                            if (projectList.size() == projectDocs.size()) {
+                                                adapter.notifyDataSetChanged();
+                                            }
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            project.setTaskCount(0);
+                                            projectList.add(project);
+
+                                            if (projectList.size() == projectDocs.size()) {
+                                                adapter.notifyDataSetChanged();
+                                            }
+                                        });
+                            }
                         } else {
                             Toast.makeText(getContext(), "Failed to load projects", Toast.LENGTH_SHORT).show();
                         }
                     });
         }
     }
+
 
     private void replaceFragment(AddProjectFragment fragment) {
         if (getActivity() != null) {
