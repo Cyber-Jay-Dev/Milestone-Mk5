@@ -1,12 +1,15 @@
 package com.example.milestonemk_4.activitiesUI;
 
+import android.app.Dialog;
 import android.os.Bundle;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.utils.NetworkUtils;
@@ -21,6 +24,7 @@ public class Add_Project extends AppCompatActivity {
     private EditText projectTitle;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private Dialog dialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,8 +37,27 @@ public class Add_Project extends AppCompatActivity {
         projectTitle = findViewById(R.id.projectTitleInput);
         Button addProjectToDb = findViewById(R.id.addprojectItem);
         ImageButton backButton = findViewById(R.id.topbar_backBtn);
+        ImageButton openDialog = findViewById(R.id.openAddDialog);
 
         backButton.setOnClickListener(view1 -> finish());
+
+        dialog = new Dialog(this);
+        dialog.setContentView(R.layout.add_collab_dialog);
+        dialog.setCancelable(false);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            dialog.getWindow().setBackgroundDrawable(
+                    ContextCompat.getDrawable(this, R.drawable.custom_dialog_bg));
+        }
+
+        //dialog stuff
+        ImageButton closedialog = dialog.findViewById(R.id.close_dialog);
+        closedialog.setOnClickListener(view -> dialog.dismiss());
+        openDialog.setOnClickListener(view -> dialog.show());
 
         addProjectToDb.setOnClickListener(v -> {
             String title = projectTitle.getText().toString().trim();
