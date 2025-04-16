@@ -1,6 +1,7 @@
 package com.example.milestonemk_4.fragments;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,19 +11,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
+
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.milestonemk_4.Adapter.ProjectAdapter;
 import com.example.milestonemk_4.R;
+import com.example.milestonemk_4.activitiesUI.Add_Project;
+import com.example.milestonemk_4.activitiesUI.sign_up_page;
 import com.example.milestonemk_4.model.Project;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -50,7 +53,15 @@ public class HomeFragment extends Fragment {
         auth = FirebaseAuth.getInstance();
 
         FloatingActionButton fab = view.findViewById(R.id.addProjectBtn);
-        fab.setOnClickListener(view1 -> replaceFragment(new AddProjectFragment()));
+
+        fab.setOnClickListener(view1 -> {
+            if (getContext() != null){
+                startActivity(new Intent(getContext(), Add_Project.class ));
+            } else {
+                Toast.makeText(getContext(), "error", Toast.LENGTH_SHORT).show();
+            }
+
+        });
 
         loadProjects();
         return view;
@@ -111,17 +122,6 @@ public class HomeFragment extends Fragment {
                     });
         }
     }
-
-
-    private void replaceFragment(AddProjectFragment fragment) {
-        if (getActivity() != null) {
-            FragmentTransaction transaction = getActivity().getSupportFragmentManager().beginTransaction();
-            transaction.replace(R.id.fragment_container, fragment);
-            transaction.addToBackStack(null);
-            transaction.commit();
-        }
-    }
-
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
