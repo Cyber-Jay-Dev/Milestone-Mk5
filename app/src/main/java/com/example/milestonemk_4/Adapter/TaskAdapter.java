@@ -15,9 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.model.Task;
 
-
 import java.util.List;
-import java.util.Objects;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
@@ -43,12 +41,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
         Context context = holder.status.getContext();
 
-        Drawable background = Objects.requireNonNull(ContextCompat.getDrawable(context, R.drawable.rounded_bg)).mutate();
+        // Ensure 'rounded_bg' exists in drawable folder
+        Drawable background = ContextCompat.getDrawable(context, R.drawable.rounded_bg);
 
         if (background instanceof GradientDrawable) {
             GradientDrawable gradientDrawable = (GradientDrawable) background;
+            String status = task.getStatus().toLowerCase();  // Ensure status is in lowercase
 
-            String status = task.getStatus().toLowerCase();
             switch (status) {
                 case "low":
                     gradientDrawable.setColor(ContextCompat.getColor(context, android.R.color.holo_green_light));
@@ -67,17 +66,35 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.status.setBackground(gradientDrawable);
         }
     }
+
     @Override
     public int getItemCount() {
         return taskList.size();
     }
 
+    public void addTask(Task task) {
+        taskList.add(task);
+        notifyItemInserted(taskList.size() - 1);
+    }
+
+    public void removeTask(int position) {
+        if (position >= 0 && position < taskList.size()) {
+            taskList.remove(position);
+            notifyItemRemoved(position);
+        }
+    }
+
+    public Task getTask(int position) {
+        return taskList.get(position);
+    }
+
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
         TextView taskName;
         TextView status;
+
         public TaskViewHolder(View view) {
             super(view);
-            taskName = view.findViewById(R.id.TaskNameTV);
+            taskName = view.findViewById(R.id.TaskNameTV);  // Make sure these IDs match the layout
             status = view.findViewById(R.id.TaskStatus);
         }
     }
