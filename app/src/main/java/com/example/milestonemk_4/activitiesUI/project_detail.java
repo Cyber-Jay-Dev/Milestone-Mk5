@@ -3,7 +3,10 @@ package com.example.milestonemk_4.activitiesUI;
 import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Dialog;
+import android.content.ClipData;
 import android.os.Bundle;
+import android.view.DragEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -12,14 +15,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.milestonemk_4.Adapter.TaskAdapter;
 import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.model.Task;
-
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -41,6 +42,8 @@ public class project_detail extends AppCompatActivity {
     TaskAdapter toDoAdapter, inProgressAdapter, completedAdapter;
     List<Task> toDoList, inProgressList, completedList;
 
+    private Task draggedTask;
+
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +58,6 @@ public class project_detail extends AppCompatActivity {
         inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
         completedRecyclerView = findViewById(R.id.completedRecyclerView);
 
-        // Get project info
         projectId = getIntent().getStringExtra("projectId");
         String title = getIntent().getStringExtra("title");
 
@@ -68,7 +70,6 @@ public class project_detail extends AppCompatActivity {
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
 
-        // Dialog setup
         dialog = new Dialog(this);
         dialog.setContentView(R.layout.add_task_dialog);
         Objects.requireNonNull(dialog.getWindow()).setLayout(
@@ -85,7 +86,6 @@ public class project_detail extends AppCompatActivity {
         backBtn.setOnClickListener(v -> finish());
         openTasksDialog.setOnClickListener(view -> dialog.show());
 
-        // RecyclerViews setup
         toDoList = new ArrayList<>();
         inProgressList = new ArrayList<>();
         completedList = new ArrayList<>();
@@ -102,12 +102,16 @@ public class project_detail extends AppCompatActivity {
         inProgressRecyclerView.setAdapter(inProgressAdapter);
         completedRecyclerView.setAdapter(completedAdapter);
 
-        // Drag-and-drop support
-        setupDragAndDrop(toDoRecyclerView, toDoList, toDoAdapter, "To Do");
-        setupDragAndDrop(inProgressRecyclerView, inProgressList, inProgressAdapter, "In Progress");
-        setupDragAndDrop(completedRecyclerView, completedList, completedAdapter, "Completed");
+        // Set long click listeners to start drag
+        toDoAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
+        inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
+        completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
 
-        // Submit new task
+        // Set drag listeners
+        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList, toDoAdapter));
+        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList, inProgressAdapter));
+        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList, completedAdapter));
+
         submitBtn.setOnClickListener(v -> {
             String taskName = Objects.requireNonNull(taskNameInput.getText()).toString().trim();
             String status = Objects.requireNonNull(statusInput.getText()).toString().trim();
@@ -137,66 +141,60 @@ public class project_detail extends AppCompatActivity {
         });
     }
 
-    private void setupDragAndDrop(RecyclerView recyclerView, List<Task> sourceList, TaskAdapter adapter, String stage) {
-        ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN |
-                        ItemTouchHelper.START | ItemTouchHelper.END,
-                0
-        ) {
-            @Override
-            public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, @NonNull RecyclerView.ViewHolder target) {
-                return true; // Moving inside same list not required for now
-            }
-
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) {}
-
-            @Override
-            public boolean isLongPressDragEnabled() {
-                return true;
-            }
-
-            @Override
-            public void clearView(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
-                super.clearView(rv, vh);
-                fetchTasks(); // Reload all after drag
-            }
-
-            @Override
-            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
-                if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
-                    updateTaskStages();
-                }
-                super.onSelectedChanged(viewHolder, actionState);
-            }
-        };
-
-        new ItemTouchHelper(callback).attachToRecyclerView(recyclerView);
-    }
-
-    private void updateTaskStages() {
-        updateStageForList(toDoList, "To Do");
-        updateStageForList(inProgressList, "In Progress");
-        updateStageForList(completedList, "Completed");
-    }
-
-    private void updateStageForList(List<Task> list, String stage) {
-        for (Task task : list) {
-            db.collection("projects")
-                    .document(projectId)
-                    .collection("tasks")
-                    .whereEqualTo("taskName", task.getTaskName()) // match by name
-                    .get()
-                    .addOnSuccessListener(snapshot -> {
-                        for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                            db.collection("projects")
-                                    .document(projectId)
-                                    .collection("tasks")
-                                    .document(doc.getId())
-                                    .update("stage", stage);
-                        }
-                    });
+    private void startDrag(View view, Task task) {
+        if (view.getParent() != null) {
+            draggedTask = task;
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
+            view.startDragAndDrop(ClipData.newPlainText("", ""), shadowBuilder, null, 0);
         }
+    }
+
+
+    @SuppressLint("NotifyDataSetChanged")
+    private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
+        switch (event.getAction()) {
+            case DragEvent.ACTION_DRAG_STARTED:
+                return true;
+            case DragEvent.ACTION_DROP:
+                if (draggedTask != null) {
+                    toDoList.remove(draggedTask);
+                    inProgressList.remove(draggedTask);
+                    completedList.remove(draggedTask);
+
+                    draggedTask.setStage(targetStage);
+                    targetList.add(draggedTask);
+
+                    updateTaskStageInFirestore(draggedTask);
+
+                    toDoAdapter.notifyDataSetChanged();
+                    inProgressAdapter.notifyDataSetChanged();
+                    completedAdapter.notifyDataSetChanged();
+
+                    draggedTask = null;
+                }
+                return true;
+            case DragEvent.ACTION_DRAG_ENDED:
+                draggedTask = null;
+                return true;
+        }
+        return false;
+    }
+
+    private void updateTaskStageInFirestore(Task task) {
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .whereEqualTo("taskName", task.getTaskName())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        db.collection("projects")
+                                .document(projectId)
+                                .collection("tasks")
+                                .document(doc.getId())
+                                .update("stage", task.getStage());
+                    }
+                });
     }
 
     @SuppressLint("NotifyDataSetChanged")

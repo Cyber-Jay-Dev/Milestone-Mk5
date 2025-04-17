@@ -1,5 +1,8 @@
 package com.example.milestonemk_4.model;
 
+import com.google.firebase.firestore.IgnoreExtraProperties;
+
+@IgnoreExtraProperties
 public class Project {
     private String id;
     private String title;
