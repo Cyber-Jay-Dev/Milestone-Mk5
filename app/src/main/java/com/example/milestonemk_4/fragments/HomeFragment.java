@@ -75,7 +75,7 @@ public class HomeFragment extends Fragment {
             String uid = user.getUid();
 
             db.collection("projects")
-                    .whereEqualTo("userId", uid)
+                    .whereArrayContains("allowedUsers", uid)
                     .get()
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {

@@ -46,7 +46,7 @@
             android:layout_marginBottom="16dp"
             app:boxStrokeColor="@color/Emerald"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/addCollabs"
+            app:layout_constraintEnd_toStartOf="@id/addCollabBtn"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textView5">
 
@@ -60,7 +60,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/addCollabs"
+            android:id="@+id/addCollabBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/add"
