@@ -147,8 +147,6 @@ public class project_detail extends AppCompatActivity {
             view.startDragAndDrop(ClipData.newPlainText("", ""), shadowBuilder, null, 0);
         }
     }
-
-
     @SuppressLint("NotifyDataSetChanged")
     private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
         switch (event.getAction()) {
