@@ -113,10 +113,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         try {
             // Get the avatar drawable
             int avatarResourceId = getAvatarResourceId(avatarId);
-            Drawable avatarDrawable = getResources().getDrawable(avatarResourceId, getTheme());
+            @SuppressLint("UseCompatLoadingForDrawables") Drawable avatarDrawable = getResources().getDrawable(avatarResourceId, getTheme());
 
             // Create a colored background
-            GradientDrawable backgroundDrawable = (GradientDrawable) getResources().getDrawable(R.drawable.circle_background, getTheme()).mutate();
+            @SuppressLint("UseCompatLoadingForDrawables") GradientDrawable backgroundDrawable = (GradientDrawable) getResources().getDrawable(R.drawable.circle_background, getTheme()).mutate();
             backgroundDrawable.setColor(Color.parseColor(bgColor));
 
             // Create a layer-list programmatically
