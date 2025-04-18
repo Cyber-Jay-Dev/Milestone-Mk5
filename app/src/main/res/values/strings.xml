@@ -34,4 +34,5 @@
 
     <string name="select_status">Select Status</string>
     <string name="create_project">Create Project</string>
+    <string name="profile_picture">Profile Picture</string>
 </resources>

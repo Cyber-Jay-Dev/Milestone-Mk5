@@ -19,7 +19,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/default_profile"
-            android:contentDescription="Profile Picture"
+            android:contentDescription="@string/profile_picture"
             android:scaleType="centerCrop" />
 
     </androidx.cardview.widget.CardView>

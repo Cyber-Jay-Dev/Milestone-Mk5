@@ -1,5 +1,6 @@
 package com.example.milestonemk_4.activitiesUI;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.os.Bundle;
 import android.view.ViewGroup;
@@ -10,8 +11,12 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.milestonemk_4.R;
+import com.example.milestonemk_4.Adapter.CollaboratorAdapter;
+import com.example.milestonemk_4.model.Collaborator;
 import com.example.milestonemk_4.utils.NetworkUtils;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -24,12 +29,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Add_Project extends AppCompatActivity {
+public class Add_Project extends AppCompatActivity implements CollaboratorAdapter.OnCollaboratorListener {
     private EditText projectTitle;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private Dialog dialog;
     private final ArrayList<String> allowedUserUIDs = new ArrayList<>();
+    private final ArrayList<Collaborator> collaboratorList = new ArrayList<>();
+    private CollaboratorAdapter collaboratorAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +50,12 @@ public class Add_Project extends AppCompatActivity {
         Button addProjectToDb = findViewById(R.id.addprojectItem);
         ImageButton backButton = findViewById(R.id.topbar_backBtn);
         ImageButton openDialog = findViewById(R.id.openAddDialog);
+
+        // Initialize RecyclerView
+        RecyclerView recyclerView = findViewById(R.id.UserProfiles);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        collaboratorAdapter = new CollaboratorAdapter(this, collaboratorList, this);
+        recyclerView.setAdapter(collaboratorAdapter);
 
         backButton.setOnClickListener(view1 -> finish());
 
@@ -75,6 +88,7 @@ public class Add_Project extends AppCompatActivity {
             }
 
             searchEmail(emailCollab);
+            dialogEmailInput.setText(""); // Clear input field after search
         });
 
         addProjectToDb.setOnClickListener(v -> {
@@ -87,8 +101,36 @@ public class Add_Project extends AppCompatActivity {
             }
         });
 
+        addCurrentUserAsCollaborator();
     }
 
+    @SuppressLint("NotifyDataSetChanged")
+    private void addCurrentUserAsCollaborator() {
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null) {
+            String uid = currentUser.getUid();
+            String email = currentUser.getEmail();
+
+            // Add to allowed UIDs
+            if (!allowedUserUIDs.contains(uid)) {
+                allowedUserUIDs.add(uid);
+            }
+
+            // Get user info and add to display list
+            db.collection("users").document(uid).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        String name = documentSnapshot.exists() ?
+                                documentSnapshot.getString("username") :
+                                "You (Owner)";
+
+                        Collaborator currentUserCollab = new Collaborator(uid, email, name);
+                        collaboratorList.add(currentUserCollab);
+                        collaboratorAdapter.notifyDataSetChanged();
+                    });
+        }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
     private void searchEmail(String emailInput) {
         CollectionReference usersRef = db.collection("users");
         usersRef.whereEqualTo("email", emailInput)
@@ -98,9 +140,18 @@ public class Add_Project extends AppCompatActivity {
                         if (!task.getResult().isEmpty()) {
                             for (QueryDocumentSnapshot document : task.getResult()) {
                                 String uid = document.getId();
+                                String email = document.getString("email");
+                                String name = document.getString("username");
 
                                 if (!allowedUserUIDs.contains(uid)) {
                                     allowedUserUIDs.add(uid);
+
+                                    // Add to display list
+                                    Collaborator collaborator = new Collaborator(uid, email, name);
+                                    collaboratorList.add(collaborator);
+                                    collaboratorAdapter.notifyDataSetChanged();
+
+                                    dialog.dismiss();
                                     Toast.makeText(this, "Collaborator added!", Toast.LENGTH_SHORT).show();
                                 } else {
                                     Toast.makeText(this, "Collaborator already added", Toast.LENGTH_SHORT).show();
@@ -113,6 +164,25 @@ public class Add_Project extends AppCompatActivity {
                         Toast.makeText(this, "Error searching for user.", Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    @Override
+    public void onCollaboratorRemove(int position) {
+        // Prevent removing yourself (first collaborator)
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null && position == 0 &&
+                collaboratorList.get(0).getUid().equals(currentUser.getUid())) {
+            Toast.makeText(this, "Cannot remove yourself as collaborator", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Remove from both lists
+        String removedUid = collaboratorList.get(position).getUid();
+        allowedUserUIDs.remove(removedUid);
+        collaboratorList.remove(position);
+        collaboratorAdapter.notifyItemRemoved(position);
+
+        Toast.makeText(this, "Collaborator removed", Toast.LENGTH_SHORT).show();
     }
 
     private void addProjectToFirestore(String title) {
