@@ -12,10 +12,15 @@ import androidx.fragment.app.Fragment;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -76,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         View headerView = navigationView.getHeaderView(0);
         TextView usernameTextView = headerView.findViewById(R.id.username);
         TextView emailTextView = headerView.findViewById(R.id.email);
+        ImageView profileImageView = headerView.findViewById(R.id.profile_image);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
@@ -86,6 +92,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (task.isSuccessful() && task.getResult().exists()) {
                     String username = task.getResult().getString("username");
                     usernameTextView.setText("Hi, " + username + "!");
+
+                    // Get the avatar ID and background color
+                    Long avatarId = task.getResult().getLong("avatarId");
+                    String bgColor = task.getResult().getString("profileBgColor");
+
+                    if (avatarId != null && bgColor != null) {
+                        // Load the corresponding avatar with background color
+                        setProfilePicture(profileImageView, avatarId.intValue(), bgColor);
+                    }
                 } else {
                     usernameTextView.setText("Hi, User!");
                 }
@@ -93,6 +108,56 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Method to set profile picture with background color and avatar overlay
+    private void setProfilePicture(ImageView imageView, int avatarId, String bgColor) {
+        try {
+            // Get the avatar drawable
+            int avatarResourceId = getAvatarResourceId(avatarId);
+            Drawable avatarDrawable = getResources().getDrawable(avatarResourceId, getTheme());
+
+            // Create a colored background
+            GradientDrawable backgroundDrawable = (GradientDrawable) getResources().getDrawable(R.drawable.circle_background, getTheme()).mutate();
+            backgroundDrawable.setColor(Color.parseColor(bgColor));
+
+            // Create a layer-list programmatically
+            LayerDrawable layerDrawable = new LayerDrawable(new Drawable[]{backgroundDrawable, avatarDrawable});
+
+            // Set the layered drawable as the image source
+            imageView.setImageDrawable(layerDrawable);
+        } catch (Exception e) {
+            Log.e("ProfilePicture", "Error setting profile picture", e);
+            // Fallback to default if there's an error
+            imageView.setImageResource(R.drawable.default_profile);
+        }
+    }
+
+    // Helper method to get the avatar resource ID
+    private int getAvatarResourceId(int profilePicId) {
+        switch (profilePicId) {
+            case 1:
+                return R.drawable.profile_1;
+            case 2:
+                return R.drawable.profile_2;
+            case 3:
+                return R.drawable.profile_3;
+            case 4:
+                return R.drawable.profile_4;
+            case 5:
+                return R.drawable.profile_5;
+            case 6:
+                return R.drawable.profile_6;
+            case 7:
+                return R.drawable.profile_7;
+            case 8:
+                return R.drawable.profile_8;
+            case 9:
+                return R.drawable.profile_9;
+            case 10:
+                return R.drawable.profile_10;
+            default:
+                return R.drawable.default_profile;
+        }
+    }
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         Fragment selectedFragment = null;

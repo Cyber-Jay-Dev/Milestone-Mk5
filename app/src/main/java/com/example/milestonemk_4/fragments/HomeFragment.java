@@ -18,7 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.milestonemk_4.Adapter.ProjectAdapter;
 import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.activitiesUI.Add_Project;
-import com.example.milestonemk_4.activitiesUI.sign_up_page;
+
 import com.example.milestonemk_4.model.Project;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;

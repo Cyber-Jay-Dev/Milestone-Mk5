@@ -16,11 +16,26 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 public class sign_up_page extends AppCompatActivity {
     private EditText usernameInput, emailInput, passwordInput, confirmPasswordInput;
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
+
+    // Array of potential background colors (in hex format)
+    private static final String[] PROFILE_COLORS = {
+            "#4285F4", // Blue
+            "#EA4335", // Red
+            "#FBBC05", // Yellow
+            "#34A853", // Green
+            "#9C27B0", // Purple
+            "#FF9800", // Orange
+            "#00BCD4", // Cyan
+            "#795548", // Brown
+            "#607D8B", // Blue Grey
+            "#E91E63"  // Pink
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,9 +103,17 @@ public class sign_up_page extends AppCompatActivity {
     }
 
     private void saveUserData(String userId, String username, String email) {
+        // Generate random profile avatar number (1-5)
+        int avatarNumber = (int) (Math.random() * 10) + 1;
+
+        // Select a random background color
+        String bgColor = getRandomBackgroundColor();
+
         Map<String, Object> user = new HashMap<>();
         user.put("username", username);
         user.put("email", email);
+        user.put("avatarId", avatarNumber);
+        user.put("profileBgColor", bgColor);
 
         db.collection("users").document(userId)
                 .set(user)
@@ -100,5 +123,10 @@ public class sign_up_page extends AppCompatActivity {
                     finish();
                 })
                 .addOnFailureListener(e -> Toast.makeText(sign_up_page.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show());
+    }
+
+    private String getRandomBackgroundColor() {
+        Random random = new Random();
+        return PROFILE_COLORS[random.nextInt(PROFILE_COLORS.length)];
     }
 }
