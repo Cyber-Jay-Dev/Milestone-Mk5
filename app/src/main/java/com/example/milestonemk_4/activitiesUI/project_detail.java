@@ -28,6 +28,7 @@ import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -112,9 +113,9 @@ public class project_detail extends AppCompatActivity {
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
 
         // Set drag listeners
-        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList));
-        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList));
-        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList));
+        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList, toDoAdapter));
+        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList, inProgressAdapter));
+        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList, completedAdapter));
     }
 
     private void startDrag(View view, Task task) {
@@ -126,7 +127,7 @@ public class project_detail extends AppCompatActivity {
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList) {
+    private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
                 return true;
@@ -172,7 +173,7 @@ public class project_detail extends AppCompatActivity {
                 });
     }
 
-    // Enhanced task dialog with user assignment (from first code snippet)
+    // Enhanced task dialog with required user assignment
     private void showAddTaskDialog(String projectId) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.add_task_dialog, null);
@@ -194,6 +195,12 @@ public class project_detail extends AppCompatActivity {
             // Set up user dropdown
             UserAutoCompleteAdapter userAdapter = new UserAutoCompleteAdapter(this, users);
             assignedUserInput.setAdapter(userAdapter);
+
+            // If no users are available, show a message and disable the submit button
+            if (users.isEmpty()) {
+                Toast.makeText(this, "No users available for assignment. Please add users to the project first.", Toast.LENGTH_LONG).show();
+                submitBtn.setEnabled(false);
+            }
         });
 
         AlertDialog dialog = builder.create();
@@ -213,6 +220,10 @@ public class project_detail extends AppCompatActivity {
                 statusInput.setError("Status is required");
                 return;
             }
+            if (assignedUsername.isEmpty()) {
+                assignedUserInput.setError("User assignment is required");
+                return;
+            }
 
             // Find the selected user
             User selectedUser = null;
@@ -221,6 +232,12 @@ public class project_detail extends AppCompatActivity {
                     selectedUser = user;
                     break;
                 }
+            }
+
+            // Validate user selection
+            if (selectedUser == null) {
+                assignedUserInput.setError("Please select a valid user");
+                return;
             }
 
             // Create and save task
@@ -236,11 +253,9 @@ public class project_detail extends AppCompatActivity {
         taskData.put("status", status);
         taskData.put("stage", "To Do"); // Default stage for new tasks
 
-        // Add user assignment if available
-        if (assignedUser != null) {
-            taskData.put("assignedUserId", assignedUser.getUid());
-            taskData.put("assignedUsername", assignedUser.getUsername());
-        }
+        // Add required user assignment
+        taskData.put("assignedUserId", assignedUser.getUid());
+        taskData.put("assignedUsername", assignedUser.getUsername());
 
         db.collection("projects")
                 .document(projectId)
@@ -288,6 +303,10 @@ public class project_detail extends AppCompatActivity {
                                         })
                                         .addOnFailureListener(e -> {
                                             Log.e("FetchUsers", "Error loading user: " + e.getMessage());
+                                            // If we fail to load a user, still notify listener to prevent UI from hanging
+                                            if (userList.isEmpty()) {
+                                                listener.onUsersLoaded(userList);
+                                            }
                                         });
                             }
                         } else {
@@ -330,11 +349,9 @@ public class project_detail extends AppCompatActivity {
 
                         Task task = new Task(taskName, status, stage);
 
-                        // Set assigned user information if available
-                        if (assignedUserId != null && assignedUsername != null) {
-                            task.setAssignedUserId(assignedUserId);
-                            task.setAssignedUsername(assignedUsername);
-                        }
+                        // Set assigned user information
+                        task.setAssignedUserId(assignedUserId);
+                        task.setAssignedUsername(assignedUsername);
 
                         if (stage == null || stage.equals("To Do")) {
                             toDoList.add(task);
