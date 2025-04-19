@@ -4,12 +4,32 @@ public class Task {
     private String taskName;
     private String status;
     private String stage;
+    // Fields for user assignment
+    private String assignedUserId;
+    private String assignedUsername;
 
-    public Task(String taskName, String status, String stage) {
+    // Default constructor for Firestore
+    public Task() {
+        // Required empty constructor for Firestore
+    }
+
+    public Task(String taskName, String status, String projectId) {
+        this.taskName = taskName;
+        this.status = status;
+        this.stage = "To Do";
+    }
+
+    // Constructor with user assignment
+    public Task(String taskName, String status, String stage, String assignedUserId, String assignedUsername) {
         this.taskName = taskName;
         this.status = status;
         this.stage = stage;
+        this.assignedUserId = assignedUserId;
+        this.assignedUsername = assignedUsername;
     }
+
+    // Constructor with projectId from first code snippet
+
 
     public String getTaskName() {
         return taskName;
@@ -33,5 +53,27 @@ public class Task {
 
     public void setStage(String stage) {
         this.stage = stage;
+    }
+
+    // User assignment getters and setters
+    public String getAssignedUserId() {
+        return assignedUserId;
+    }
+
+    public void setAssignedUserId(String assignedUserId) {
+        this.assignedUserId = assignedUserId;
+    }
+
+    public String getAssignedUsername() {
+        return assignedUsername;
+    }
+
+    public void setAssignedUsername(String assignedUsername) {
+        this.assignedUsername = assignedUsername;
+    }
+
+    // Check if task has an assigned user
+    public boolean hasAssignedUser() {
+        return assignedUserId != null && !assignedUserId.isEmpty();
     }
 }

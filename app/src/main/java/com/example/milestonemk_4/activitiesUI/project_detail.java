@@ -5,21 +5,28 @@ import android.app.ActionBar;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.milestonemk_4.Adapter.TaskAdapter;
+import com.example.milestonemk_4.Adapter.UserAutoCompleteAdapter;
 import com.example.milestonemk_4.R;
+import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
+import com.example.milestonemk_4.model.User;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -40,6 +47,7 @@ public class project_detail extends AppCompatActivity {
     RecyclerView toDoRecyclerView, inProgressRecyclerView, completedRecyclerView;
     TaskAdapter toDoAdapter, inProgressAdapter, completedAdapter;
     List<Task> toDoList, inProgressList, completedList;
+    List<User> userList;
 
     private Task draggedTask;
 
@@ -50,6 +58,7 @@ public class project_detail extends AppCompatActivity {
         setContentView(R.layout.activity_project_detail);
 
         db = FirebaseFirestore.getInstance();
+        userList = new ArrayList<>();
 
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
@@ -69,6 +78,7 @@ public class project_detail extends AppCompatActivity {
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
 
+        // Initialize dialog but don't show it yet - we'll use the enhanced version
         dialog = new Dialog(this);
         dialog.setContentView(R.layout.add_task_dialog);
         Objects.requireNonNull(dialog.getWindow()).setLayout(
@@ -78,12 +88,8 @@ public class project_detail extends AppCompatActivity {
         dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.dialog_bg));
         dialog.setCancelable(true);
 
-        TextInputEditText taskNameInput = dialog.findViewById(R.id.taskNameInput);
-        MaterialAutoCompleteTextView statusInput = dialog.findViewById(R.id.statusInput);
-        Button submitBtn = dialog.findViewById(R.id.btn);
-
         backBtn.setOnClickListener(v -> finish());
-        openTasksDialog.setOnClickListener(view -> dialog.show());
+        openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
 
         toDoList = new ArrayList<>();
         inProgressList = new ArrayList<>();
@@ -110,34 +116,6 @@ public class project_detail extends AppCompatActivity {
         toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList, toDoAdapter));
         inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList, inProgressAdapter));
         completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList, completedAdapter));
-
-        submitBtn.setOnClickListener(v -> {
-            String taskName = Objects.requireNonNull(taskNameInput.getText()).toString().trim();
-            String status = Objects.requireNonNull(statusInput.getText()).toString().trim();
-
-            if (taskName.isEmpty() || status.isEmpty()) {
-                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Map<String, Object> taskData = new HashMap<>();
-            taskData.put("taskName", taskName);
-            taskData.put("status", status);
-            taskData.put("stage", "To Do");
-
-            db.collection("projects")
-                    .document(projectId)
-                    .collection("tasks")
-                    .add(taskData)
-                    .addOnSuccessListener(docRef -> {
-                        Toast.makeText(this, "Task added successfully!", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                        taskNameInput.setText("");
-                        statusInput.setText("");
-                        fetchTasks();
-                    })
-                    .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        });
     }
 
     private void startDrag(View view, Task task) {
@@ -147,6 +125,7 @@ public class project_detail extends AppCompatActivity {
             view.startDragAndDrop(ClipData.newPlainText("", ""), shadowBuilder, null, 0);
         }
     }
+
     @SuppressLint("NotifyDataSetChanged")
     private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
         switch (event.getAction()) {
@@ -194,6 +173,144 @@ public class project_detail extends AppCompatActivity {
                 });
     }
 
+    // Enhanced task dialog with user assignment (from first code snippet)
+    private void showAddTaskDialog(String projectId) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.add_task_dialog, null);
+        builder.setView(dialogView);
+
+        EditText taskNameInput = dialogView.findViewById(R.id.taskNameInput);
+        MaterialAutoCompleteTextView statusInput = dialogView.findViewById(R.id.statusInput);
+        MaterialAutoCompleteTextView assignedUserInput = dialogView.findViewById(R.id.assignedUserInput);
+        Button submitBtn = dialogView.findViewById(R.id.btn);
+
+        // Set up status dropdown
+        String[] statusOptions = getResources().getStringArray(R.array.option_list);
+        ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, statusOptions);
+        statusInput.setAdapter(statusAdapter);
+
+        // Fetch allowed users for this project
+        fetchAllowedUsers(projectId, users -> {
+            // Set up user dropdown
+            UserAutoCompleteAdapter userAdapter = new UserAutoCompleteAdapter(this, users);
+            assignedUserInput.setAdapter(userAdapter);
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        submitBtn.setOnClickListener(v -> {
+            String taskName = taskNameInput.getText().toString().trim();
+            String status = statusInput.getText().toString().trim();
+            String assignedUsername = assignedUserInput.getText().toString().trim();
+
+            // Validate inputs
+            if (taskName.isEmpty()) {
+                taskNameInput.setError("Task name is required");
+                return;
+            }
+            if (status.isEmpty()) {
+                statusInput.setError("Status is required");
+                return;
+            }
+
+            // Find the selected user
+            User selectedUser = null;
+            for (User user : userList) {
+                if (user.getUsername().equals(assignedUsername)) {
+                    selectedUser = user;
+                    break;
+                }
+            }
+
+            // Create and save task
+            saveTask(taskName, status, selectedUser);
+            dialog.dismiss();
+        });
+    }
+
+    // Save task with user assignment
+    private void saveTask(String taskName, String status, User assignedUser) {
+        Map<String, Object> taskData = new HashMap<>();
+        taskData.put("taskName", taskName);
+        taskData.put("status", status);
+        taskData.put("stage", "To Do"); // Default stage for new tasks
+
+        // Add user assignment if available
+        if (assignedUser != null) {
+            taskData.put("assignedUserId", assignedUser.getUid());
+            taskData.put("assignedUsername", assignedUser.getUsername());
+        }
+
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .add(taskData)
+                .addOnSuccessListener(docRef -> {
+                    Toast.makeText(this, "Task added successfully!", Toast.LENGTH_SHORT).show();
+                    fetchTasks();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    // Method to fetch allowed users for a project
+    private void fetchAllowedUsers(String projectId, OnUsersLoadedListener listener) {
+        userList.clear();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // First, get the project to retrieve the allowed users list
+        db.collection("projects").document(projectId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Project project = documentSnapshot.toObject(Project.class);
+                        if (project != null && project.getAllowedUsers() != null && !project.getAllowedUsers().isEmpty()) {
+                            // Project has allowed users, fetch their details
+                            for (String userId : project.getAllowedUsers()) {
+                                db.collection("users").document(userId).get()
+                                        .addOnSuccessListener(userDoc -> {
+                                            if (userDoc.exists()) {
+                                                String uid = userDoc.getId();
+                                                String username = userDoc.getString("username");
+                                                String email = userDoc.getString("email");
+                                                Long avatarIdLong = userDoc.getLong("avatarId");
+                                                String bgColor = userDoc.getString("profileBgColor");
+
+                                                int avatarId = avatarIdLong != null ? avatarIdLong.intValue() : 0;
+
+                                                User user = new User(uid, username, email, avatarId, bgColor);
+                                                userList.add(user);
+
+                                                // Check if we've loaded all users
+                                                if (userList.size() == project.getAllowedUsers().size()) {
+                                                    listener.onUsersLoaded(userList);
+                                                }
+                                            }
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Log.e("FetchUsers", "Error loading user: " + e.getMessage());
+                                        });
+                            }
+                        } else {
+                            // No allowed users, return an empty list
+                            listener.onUsersLoaded(userList);
+                        }
+                    } else {
+                        // Project not found, return an empty list
+                        listener.onUsersLoaded(userList);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("FetchUsers", "Error loading project: " + e.getMessage());
+                    listener.onUsersLoaded(userList);
+                });
+    }
+
+    // Interface to handle async user loading
+    interface OnUsersLoadedListener {
+        void onUsersLoaded(List<User> users);
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     private void fetchTasks() {
         db.collection("projects")
@@ -209,8 +326,17 @@ public class project_detail extends AppCompatActivity {
                         String taskName = doc.getString("taskName");
                         String status = doc.getString("status");
                         String stage = doc.getString("stage");
+                        String assignedUserId = doc.getString("assignedUserId");
+                        String assignedUsername = doc.getString("assignedUsername");
 
                         Task task = new Task(taskName, status, stage);
+
+                        // Set assigned user information if available
+                        if (assignedUserId != null && assignedUsername != null) {
+                            task.setAssignedUserId(assignedUserId);
+                            task.setAssignedUsername(assignedUsername);
+                        }
+
                         if (stage == null || stage.equals("To Do")) {
                             toDoList.add(task);
                         } else if (stage.equals("In Progress")) {
