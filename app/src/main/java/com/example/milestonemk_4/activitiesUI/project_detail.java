@@ -28,7 +28,6 @@ import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -113,9 +112,9 @@ public class project_detail extends AppCompatActivity {
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
 
         // Set drag listeners
-        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList, toDoAdapter));
-        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList, inProgressAdapter));
-        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList, completedAdapter));
+        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList));
+        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList));
+        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList));
     }
 
     private void startDrag(View view, Task task) {
@@ -127,7 +126,7 @@ public class project_detail extends AppCompatActivity {
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
+    private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList) {
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
                 return true;

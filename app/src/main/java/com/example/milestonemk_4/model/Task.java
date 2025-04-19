@@ -43,9 +43,7 @@ public class Task {
         return status;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+
 
     public String getStage() {
         return stage;
@@ -56,23 +54,17 @@ public class Task {
     }
 
     // User assignment getters and setters
-    public String getAssignedUserId() {
-        return assignedUserId;
-    }
 
     public void setAssignedUserId(String assignedUserId) {
         this.assignedUserId = assignedUserId;
     }
 
-    public String getAssignedUsername() {
-        return assignedUsername;
-    }
+
 
     public void setAssignedUsername(String assignedUsername) {
         this.assignedUsername = assignedUsername;
     }
 
-    // Check if task has an assigned user
     public boolean hasAssignedUser() {
         return assignedUserId != null && !assignedUserId.isEmpty();
     }
