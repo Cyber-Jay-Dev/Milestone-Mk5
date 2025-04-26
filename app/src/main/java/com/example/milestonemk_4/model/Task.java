@@ -60,6 +60,13 @@ public class Task {
     }
 
 
+    public String getAssignedUserId() {
+        return assignedUserId;
+    }
+
+    public String getAssignedUsername() {
+        return assignedUsername;
+    }
 
     public void setAssignedUsername(String assignedUsername) {
         this.assignedUsername = assignedUsername;
