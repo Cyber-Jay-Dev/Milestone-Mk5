@@ -81,34 +81,6 @@
         android:background="?android:attr/listDivider"
         android:layout_marginBottom="16dp" />
 
-    <!-- Notification Debug Section -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Notification Troubleshooting"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/test_notification_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Send Test Notification"
-        android:layout_marginBottom="8dp" />
-
-    <Button
-        android:id="@+id/test_alarm_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Schedule Test Notification (30 sec)"
-        android:layout_marginBottom="8dp" />
-
-    <Button
-        android:id="@+id/check_status_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Check Notification Status"
-        android:layout_marginBottom="8dp" />
+    <!-- Additional settings can be added here -->
 
 </LinearLayout>

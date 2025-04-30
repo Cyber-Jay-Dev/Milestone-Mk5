@@ -6,6 +6,7 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,10 +17,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.example.milestonemk_4.R;
-import com.example.milestonemk_4.utils.NotificationDebugger;
 import com.example.milestonemk_4.utils.NotificationReceiver;
 
 import java.text.SimpleDateFormat;
@@ -31,6 +32,7 @@ public class SettingsFragment extends Fragment {
 
     private TextView timeTextView;
     private SwitchCompat notificationSwitch;
+    private Button setTimeButton;
     private SharedPreferences preferences;
     private Calendar notificationTime;
 
@@ -51,12 +53,7 @@ public class SettingsFragment extends Fragment {
         // Initialize views
         timeTextView = view.findViewById(R.id.notification_time_text);
         notificationSwitch = view.findViewById(R.id.notification_switch);
-        Button setTimeButton = view.findViewById(R.id.set_time_button);
-
-        // Debug buttons
-        Button testNotificationButton = view.findViewById(R.id.test_notification_button);
-        Button checkStatusButton = view.findViewById(R.id.check_status_button);
-        Button testAlarmButton = view.findViewById(R.id.test_alarm_button);
+        setTimeButton = view.findViewById(R.id.set_time_button);
 
         // Initialize SharedPreferences
         preferences = requireActivity().getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE);
@@ -81,18 +78,6 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Daily notifications disabled", Toast.LENGTH_SHORT).show();
             }
         });
-
-        // Debug button listeners
-        testNotificationButton.setOnClickListener(v ->
-                NotificationDebugger.sendTestNotification(requireContext()));
-
-        checkStatusButton.setOnClickListener(v -> {
-            NotificationDebugger.checkAlarmStatus(requireContext());
-            NotificationDebugger.checkNotificationSettings(requireContext());
-        });
-
-        testAlarmButton.setOnClickListener(v ->
-                NotificationDebugger.setTestAlarm(requireContext()));
     }
 
     private void loadSavedPreferences() {
@@ -169,24 +154,28 @@ public class SettingsFragment extends Fragment {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Set the time for the notification
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, notificationTime.get(Calendar.HOUR_OF_DAY));
         calendar.set(Calendar.MINUTE, notificationTime.get(Calendar.MINUTE));
         calendar.set(Calendar.SECOND, 0);
 
-        // If the time has already passed today, schedule for tomorrow
         if (calendar.before(Calendar.getInstance())) {
             calendar.add(Calendar.DAY_OF_MONTH, 1);
         }
 
-        // Schedule a repeating alarm
-        alarmManager.setRepeating(
-                AlarmManager.RTC_WAKEUP,
-                calendar.getTimeInMillis(),
-                AlarmManager.INTERVAL_DAY,
-                pendingIntent
-        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        } else {
+            alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        }
     }
 
     private void cancelNotification() {
