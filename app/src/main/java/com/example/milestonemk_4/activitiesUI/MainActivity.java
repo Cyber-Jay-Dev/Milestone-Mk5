@@ -1,21 +1,27 @@
 package com.example.milestonemk_4.activitiesUI;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -53,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         setContentView(R.layout.activity_main);
+
+        checkNotificationPermission();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -192,6 +200,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         finish();
 
         Toast.makeText(MainActivity.this, "Account has been logged out", Toast.LENGTH_SHORT).show();
+    }
+
+    private void checkNotificationPermission() {
+        // For Android 13 and above, we need to request notification permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED) {
+
+                // Register permission launcher
+                ActivityResultLauncher<String> requestPermissionLauncher =
+                        registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                            if (isGranted) {
+                                // Permission granted
+                                Log.d("MainActivity", "Notification permission granted");
+                            } else {
+                                // Permission denied
+                                Log.d("MainActivity", "Notification permission denied");
+                                Toast.makeText(this, "Notification permission is required for daily reminders",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        });
+
+                // Request the permission
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
     }
 
     @Override

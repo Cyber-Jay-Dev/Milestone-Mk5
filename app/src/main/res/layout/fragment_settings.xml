@@ -1,17 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/Light_Yellow"
+    android:orientation="vertical"
+    android:padding="16dp"
     tools:context=".fragments.SettingsFragment">
 
+    <!-- Notification Settings Section -->
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Settings Page"
-        android:textSize="30sp"
-        android:layout_centerInParent="true"/>
+        android:text="Notification Settings"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
 
+    <!-- Daily Notification Toggle -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
 
-</RelativeLayout>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Daily Reminder Notification"
+            android:textSize="16sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/notification_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <!-- Notification Time Setting -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Reminder Time"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/notification_time_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="18sp"
+                android:text="08:00 AM"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/set_time_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Change Time" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Notification Debug Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Notification Troubleshooting"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/test_notification_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Send Test Notification"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/test_alarm_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Schedule Test Notification (30 sec)"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/check_status_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Check Notification Status"
+        android:layout_marginBottom="8dp" />
+
+</LinearLayout>
