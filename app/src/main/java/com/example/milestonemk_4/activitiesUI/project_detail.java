@@ -3,12 +3,19 @@ package com.example.milestonemk_4.activitiesUI;
 import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.ClipData;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,6 +34,9 @@ import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
+import com.example.milestonemk_4.utils.GoogleDriveHelper;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -51,6 +61,13 @@ public class project_detail extends AppCompatActivity {
 
     private Task draggedTask;
 
+    private static final int REQUEST_CODE_SIGN_IN = 1;
+    private static final int REQUEST_CODE_PICK_FILE = 2;
+    private GoogleDriveHelper driveHelper;
+    private Uri selectedFileUri;
+    private String selectedFileName;
+    private AlertDialog currentDialog;
+
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +91,8 @@ public class project_detail extends AppCompatActivity {
             finish();
             return;
         }
+
+        driveHelper = new GoogleDriveHelper(this);
 
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
@@ -133,6 +152,8 @@ public class project_detail extends AppCompatActivity {
                 return true;
             case DragEvent.ACTION_DROP:
                 if (draggedTask != null) {
+                    String previousStage = draggedTask.getStage();
+
                     toDoList.remove(draggedTask);
                     inProgressList.remove(draggedTask);
                     completedList.remove(draggedTask);
@@ -146,6 +167,11 @@ public class project_detail extends AppCompatActivity {
                     inProgressAdapter.notifyDataSetChanged();
                     completedAdapter.notifyDataSetChanged();
 
+                    // Check if moved to Completed stage from another stage
+                    if (targetStage.equals("Completed") && !previousStage.equals("Completed")) {
+                        showUploadFilesDialog(draggedTask);
+                    }
+
                     draggedTask = null;
                 }
                 return true;
@@ -154,6 +180,171 @@ public class project_detail extends AppCompatActivity {
                 return true;
         }
         return false;
+    }
+
+    private void showUploadFilesDialog(Task task) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_upload_to_drive, null);
+        builder.setView(dialogView);
+
+        TextView taskCompletedText = dialogView.findViewById(R.id.taskCompletedText);
+        TextView selectedFileText = dialogView.findViewById(R.id.selectedFileText);
+        Button selectFileButton = dialogView.findViewById(R.id.selectFileButton);
+        Button cancelButton = dialogView.findViewById(R.id.cancelUploadButton);
+        Button uploadButton = dialogView.findViewById(R.id.confirmUploadButton);
+
+        taskCompletedText.setText("Task \"" + task.getTaskName() + "\" completed! Would you like to upload related files?");
+
+        AlertDialog dialog = builder.create();
+
+        selectFileButton.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            startActivityForResult(intent, REQUEST_CODE_PICK_FILE);
+        });
+
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        uploadButton.setOnClickListener(v -> {
+            if (selectedFileUri != null) {
+                // Ensure we're signed in to Google
+                GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+                if (account == null) {
+                    driveHelper.signIn();
+                } else {
+                    uploadFileToDrive(task);
+                    dialog.dismiss();
+                }
+            }
+        });
+
+        dialog.show();
+    }
+    private void uploadFileToDrive(Task task) {
+        if (selectedFileUri == null || selectedFileName == null) {
+            Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String mimeType = getContentResolver().getType(selectedFileUri);
+        if (mimeType == null) mimeType = "application/octet-stream";
+
+        // Show a progress dialog
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Uploading file to Google Drive...");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        driveHelper.uploadFileToDrive(selectedFileUri, selectedFileName, mimeType, new GoogleDriveHelper.DriveUploadCallback() {
+            @Override
+            public void onUploadSuccess(String fileId) {
+                progressDialog.dismiss();
+                Toast.makeText(project_detail.this, "File uploaded successfully!", Toast.LENGTH_SHORT).show();
+
+                // Optional: Save the file reference to Firestore for this task
+                saveFileReferenceToTask(task, fileId, selectedFileName);
+            }
+
+            @Override
+            public void onUploadFailure(Exception e) {
+                progressDialog.dismiss();
+                Toast.makeText(project_detail.this, "Upload failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+    private void saveFileReferenceToTask(Task task, String fileId, String fileName) {
+        Map<String, Object> fileData = new HashMap<>();
+        fileData.put("fileId", fileId);
+        fileData.put("fileName", fileName);
+        fileData.put("uploadTime", System.currentTimeMillis());
+
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .whereEqualTo("taskName", task.getTaskName())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.isEmpty()) {
+                        DocumentSnapshot taskDoc = snapshot.getDocuments().get(0);
+
+                        // Update task with file reference
+                        db.collection("projects")
+                                .document(projectId)
+                                .collection("tasks")
+                                .document(taskDoc.getId())
+                                .collection("files")
+                                .add(fileData)
+                                .addOnSuccessListener(documentReference ->
+                                        Log.d("GoogleDrive", "File reference saved with ID: " + documentReference.getId()))
+                                .addOnFailureListener(e ->
+                                        Log.e("GoogleDrive", "Error saving file reference", e));
+                    }
+                });
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
+            // Handle file selection
+            selectedFileUri = data.getData();
+
+            // Get file name
+            try {
+                Cursor cursor = getContentResolver().query(selectedFileUri, null, null, null, null);
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    selectedFileName = cursor.getString(nameIndex);
+
+                    // Update UI to show selected file
+                    AlertDialog dialog = getVisibleDialog();
+                    if (dialog != null) {
+                        TextView selectedFileText = dialog.findViewById(R.id.selectedFileText);
+                        Button uploadButton = dialog.findViewById(R.id.confirmUploadButton);
+
+                        if (selectedFileText != null) {
+                            selectedFileText.setText("Selected: " + selectedFileName);
+                        }
+
+                        if (uploadButton != null) {
+                            uploadButton.setEnabled(true);
+                        }
+                    }
+
+                    cursor.close();
+                }
+            } catch (Exception e) {
+                Log.e("FileSelection", "Error getting file name", e);
+                selectedFileName = "unknown_file";
+            }
+        } else if (requestCode == REQUEST_CODE_SIGN_IN) {
+            // Handle Google Sign-in result
+            if (driveHelper.handleSignInResult(requestCode, resultCode, data)) {
+                Toast.makeText(this, "Google Drive sign-in successful", Toast.LENGTH_SHORT).show();
+                // If we were in the middle of uploading a file, continue
+                if (draggedTask != null && selectedFileUri != null) {
+                    uploadFileToDrive(draggedTask);
+                }
+            } else {
+                Toast.makeText(this, "Google Drive sign-in failed", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+    private void showDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Sample Dialog")
+                .setMessage("Hello World")
+                .setPositiveButton("OK", null);
+        currentDialog = builder.create();
+        currentDialog.show();
+    }
+
+    private AlertDialog getVisibleDialog() {
+        if (currentDialog != null && currentDialog.isShowing()) {
+            return currentDialog;
+        }
+        return null;
     }
 
     private void updateTaskStageInFirestore(Task task) {
