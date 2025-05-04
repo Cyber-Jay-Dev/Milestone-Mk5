@@ -109,8 +109,10 @@ public class GoogleDriveHelper {
                 fileMetadata.setParents(Collections.singletonList(folderId));
 
                 // Get file content from Uri
-                java.io.File filePath = new java.io.File(activity.getContentResolver().getType(fileUri));
                 InputStream inputStream = activity.getContentResolver().openInputStream(fileUri);
+                if (inputStream == null) {
+                    throw new IOException("Could not open file input stream");
+                }
 
                 // Upload file to Drive
                 File uploadedFile = driveService.files().create(fileMetadata,

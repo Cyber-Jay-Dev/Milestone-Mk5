@@ -195,7 +195,12 @@ public class project_detail extends AppCompatActivity {
 
         taskCompletedText.setText("Task \"" + task.getTaskName() + "\" completed! Would you like to upload related files?");
 
+        // Initially disable upload button until a file is selected
+        uploadButton.setEnabled(false);
+
+        // Create and store the dialog reference
         AlertDialog dialog = builder.create();
+        currentDialog = dialog;  // Store reference to the current dialog
 
         selectFileButton.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -216,6 +221,8 @@ public class project_detail extends AppCompatActivity {
                     uploadFileToDrive(task);
                     dialog.dismiss();
                 }
+            } else {
+                Toast.makeText(this, "Please select a file first", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -297,11 +304,13 @@ public class project_detail extends AppCompatActivity {
                     int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                     selectedFileName = cursor.getString(nameIndex);
 
-                    // Update UI to show selected file
-                    AlertDialog dialog = getVisibleDialog();
-                    if (dialog != null) {
-                        TextView selectedFileText = dialog.findViewById(R.id.selectedFileText);
-                        Button uploadButton = dialog.findViewById(R.id.confirmUploadButton);
+                    // Log the file selection success
+                    Log.d("FileSelection", "File selected: " + selectedFileName + " with URI: " + selectedFileUri);
+
+                    // Find and update the UI in the current dialog
+                    if (currentDialog != null && currentDialog.isShowing()) {
+                        TextView selectedFileText = currentDialog.findViewById(R.id.selectedFileText);
+                        Button uploadButton = currentDialog.findViewById(R.id.confirmUploadButton);
 
                         if (selectedFileText != null) {
                             selectedFileText.setText("Selected: " + selectedFileName);
@@ -310,6 +319,8 @@ public class project_detail extends AppCompatActivity {
                         if (uploadButton != null) {
                             uploadButton.setEnabled(true);
                         }
+                    } else {
+                        Log.e("DialogError", "Current dialog is null or not showing");
                     }
 
                     cursor.close();
@@ -317,6 +328,7 @@ public class project_detail extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e("FileSelection", "Error getting file name", e);
                 selectedFileName = "unknown_file";
+                Toast.makeText(this, "Error reading file information: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == REQUEST_CODE_SIGN_IN) {
             // Handle Google Sign-in result
@@ -329,6 +341,9 @@ public class project_detail extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Google Drive sign-in failed", Toast.LENGTH_SHORT).show();
             }
+        } else {
+            Log.d("ActivityResult", "Result received with requestCode: " + requestCode +
+                    ", resultCode: " + resultCode + ", data: " + (data != null ? "not null" : "null"));
         }
     }
     private void showDialog() {
