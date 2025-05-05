@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Milestone Mk-4</string>
+    <string name="app_name">Milestone</string>
     <string name="login_welcome">Log In With Your Account</string>
     <string name="create_an_account">Create an Account</string>
     <string name="enter_your_credentials_for_login">Enter Your Credentials for LogIn</string>

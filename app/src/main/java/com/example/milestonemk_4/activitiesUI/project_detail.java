@@ -66,18 +66,17 @@ public class project_detail extends AppCompatActivity {
     private boolean isAutoScrolling = false;
 
     // Improved scroll threshold and speed settings
-    private static final int SCROLL_THRESHOLD = 200; // Distance from edge to trigger auto-scroll
-    private static final int SCROLL_SPEED_SLOW = 8; // Slower scroll speed when further from edge
-    private static final int SCROLL_SPEED_MEDIUM = 15; // Medium scroll speed
-    private static final int SCROLL_SPEED_FAST = 25; // Faster scroll speed when very close to edge
-    private static final int SCROLL_ACCELERATE_THRESHOLD = 100; // Distance for medium speed scrolling
-    private static final int SCROLL_FAST_THRESHOLD = 50; // Distance for accelerated scrolling
-    private static final int SCROLL_DELAY = 10; // Milliseconds between scroll iterations
+    private static final int SCROLL_THRESHOLD = 200;
+    private static final int SCROLL_SPEED_SLOW = 8;
+    private static final int SCROLL_SPEED_MEDIUM = 15;
+    private static final int SCROLL_SPEED_FAST = 25;
+    private static final int SCROLL_ACCELERATE_THRESHOLD = 100;
+    private static final int SCROLL_FAST_THRESHOLD = 50;
+    private static final int SCROLL_DELAY = 10;
 
     private int screenWidth;
-    private float lastTouchX; // Track the raw touch X position
+    private float lastTouchX;
 
-    // Track if we're currently in a drag operation
     private boolean isDragging = false;
 
     @SuppressLint("UseCompatLoadingForDrawables")
