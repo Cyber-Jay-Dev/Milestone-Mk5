@@ -5,13 +5,17 @@ import android.app.ActionBar;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.DragEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -55,6 +59,27 @@ public class project_detail extends AppCompatActivity {
 
     private Task draggedTask;
 
+    // Auto-scroll related variables
+    private HorizontalScrollView horizontalScrollView;
+    private Handler autoScrollHandler;
+    private Runnable autoScrollRunnable;
+    private boolean isAutoScrolling = false;
+
+    // Improved scroll threshold and speed settings
+    private static final int SCROLL_THRESHOLD = 200; // Distance from edge to trigger auto-scroll
+    private static final int SCROLL_SPEED_SLOW = 8; // Slower scroll speed when further from edge
+    private static final int SCROLL_SPEED_MEDIUM = 15; // Medium scroll speed
+    private static final int SCROLL_SPEED_FAST = 25; // Faster scroll speed when very close to edge
+    private static final int SCROLL_ACCELERATE_THRESHOLD = 100; // Distance for medium speed scrolling
+    private static final int SCROLL_FAST_THRESHOLD = 50; // Distance for accelerated scrolling
+    private static final int SCROLL_DELAY = 10; // Milliseconds between scroll iterations
+
+    private int screenWidth;
+    private float lastTouchX; // Track the raw touch X position
+
+    // Track if we're currently in a drag operation
+    private boolean isDragging = false;
+
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +88,13 @@ public class project_detail extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
+
+        // Set up auto-scroll handling
+        autoScrollHandler = new Handler(Looper.getMainLooper());
+        horizontalScrollView = findViewById(R.id.horizontalScrollView);
+
+        // Get screen width for scroll calculations
+        screenWidth = getResources().getDisplayMetrics().widthPixels;
 
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
@@ -116,17 +148,191 @@ public class project_detail extends AppCompatActivity {
         inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
 
-        // Set drag listeners
-        toDoRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "To Do", toDoList, toDoAdapter));
-        inProgressRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "In Progress", inProgressList, inProgressAdapter));
-        completedRecyclerView.setOnDragListener((v, event) -> handleDrag(event, "Completed", completedList, completedAdapter));
+        // Set drag listeners with improved implementation
+        setupDragListeners();
+    }
+
+    private void setupDragListeners() {
+        // Set drag listeners for RecyclerViews
+        View.OnDragListener dragListener = (v, event) -> {
+            // Handle touch coordinates for auto-scroll during drag operation
+            if (isDragging && (event.getAction() == DragEvent.ACTION_DRAG_LOCATION
+                    || event.getAction() == DragEvent.ACTION_DRAG_ENTERED)) {
+                lastTouchX = event.getX() + ((View) v.getParent()).getLeft();
+                handleTouchForAutoScroll();
+            }
+
+            // Determine which RecyclerView is involved
+            if (v == toDoRecyclerView) {
+                return handleDrag(event, "To Do", toDoList, toDoAdapter);
+            } else if (v == inProgressRecyclerView) {
+                return handleDrag(event, "In Progress", inProgressList, inProgressAdapter);
+            } else if (v == completedRecyclerView) {
+                return handleDrag(event, "Completed", completedList, completedAdapter);
+            }
+            return false;
+        };
+
+        // Apply the same drag listener to all RecyclerViews
+        toDoRecyclerView.setOnDragListener(dragListener);
+        inProgressRecyclerView.setOnDragListener(dragListener);
+        completedRecyclerView.setOnDragListener(dragListener);
+
+        // Global drag listener for tracking drag state
+        View mainContainer = findViewById(R.id.mainContainer);
+        mainContainer.setOnDragListener((v, event) -> {
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    isDragging = true;
+                    return true;
+
+                case DragEvent.ACTION_DRAG_LOCATION:
+                    if (isDragging) {
+                        // Update last touch position for auto-scroll
+                        lastTouchX = event.getX();
+                        handleTouchForAutoScroll();
+                    }
+                    return true;
+
+                case DragEvent.ACTION_DRAG_ENDED:
+                case DragEvent.ACTION_DROP:
+                    isDragging = false;
+                    stopAutoScroll();
+                    return true;
+            }
+            return false;  // Don't consume the event
+        });
+    }
+
+    private void handleTouchForAutoScroll() {
+        if (!isDragging) return;
+
+        // Calculate if we're near the edges
+        int scrollX = horizontalScrollView.getScrollX();
+        int maxScrollX = horizontalScrollView.getChildAt(0).getWidth() - horizontalScrollView.getWidth();
+
+        // Get absolute position within the screen
+        int[] location = new int[2];
+        horizontalScrollView.getLocationOnScreen(location);
+        int absoluteX = (int) lastTouchX + location[0];
+
+        // Calculate appropriate scroll speed based on proximity to edge
+        int scrollSpeed = 0;
+
+        // Near left edge logic with improved three-tier speed system
+        if (absoluteX - location[0] < SCROLL_THRESHOLD) {
+            if (absoluteX - location[0] < SCROLL_FAST_THRESHOLD) {
+                // Very close to edge - fast scroll
+                scrollSpeed = -SCROLL_SPEED_FAST;
+            } else if (absoluteX - location[0] < SCROLL_ACCELERATE_THRESHOLD) {
+                // Moderately close - medium scroll
+                scrollSpeed = -SCROLL_SPEED_MEDIUM;
+            } else {
+                // Near edge - slower scroll
+                scrollSpeed = -SCROLL_SPEED_SLOW;
+            }
+        }
+        // Near right edge logic with improved three-tier speed system
+        else if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_THRESHOLD) {
+            if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_FAST_THRESHOLD) {
+                // Very close to edge - fast scroll
+                scrollSpeed = SCROLL_SPEED_FAST;
+            } else if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_ACCELERATE_THRESHOLD) {
+                // Moderately close - medium scroll
+                scrollSpeed = SCROLL_SPEED_MEDIUM;
+            } else {
+                // Near edge - slower scroll
+                scrollSpeed = SCROLL_SPEED_SLOW;
+            }
+        }
+
+        // Log scroll logic for debugging
+        Log.d("AutoScroll", "Position: " + absoluteX + ", ScrollX: " + scrollX +
+                ", MaxScroll: " + maxScrollX + ", Speed: " + scrollSpeed);
+
+        // Apply scroll if needed
+        if (scrollSpeed != 0) {
+            startAutoScroll(scrollSpeed);
+        } else {
+            // Not near edges, stop auto-scrolling
+            stopAutoScroll();
+        }
+    }
+
+    private void startAutoScroll(int speed) {
+        final int finalSpeed = speed;
+
+        if (isAutoScrolling) {
+            // Update the current speed in the runnable
+            if (autoScrollRunnable != null) {
+                // The runnable will pick up the new position on next iteration
+                return;
+            }
+        }
+
+        isAutoScrolling = true;
+        autoScrollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isAutoScrolling || !isDragging) {
+                    stopAutoScroll();
+                    return;
+                }
+
+                // Calculate current scroll position
+                int scrollX = horizontalScrollView.getScrollX();
+                int maxScrollX = horizontalScrollView.getChildAt(0).getWidth() - horizontalScrollView.getWidth();
+
+                // Get current speed calculation based on edge proximity
+                int currentSpeed = finalSpeed;
+
+                // Check if we can scroll in the desired direction
+                if ((currentSpeed > 0 && scrollX < maxScrollX) || (currentSpeed < 0 && scrollX > 0)) {
+                    // Scroll by the calculated amount
+                    horizontalScrollView.scrollBy(currentSpeed, 0);
+
+                    // Log actual scrolling for debugging
+                    Log.d("AutoScroll", "Scrolling with speed: " + currentSpeed +
+                            ", ScrollX: " + horizontalScrollView.getScrollX());
+
+                    // Schedule next scroll
+                    autoScrollHandler.postDelayed(this, SCROLL_DELAY);
+                } else {
+                    // Can't scroll further in this direction
+                    Log.d("AutoScroll", "Can't scroll further, stopping");
+                    stopAutoScroll();
+                }
+            }
+        };
+
+        // Start the scroll runnable
+        autoScrollHandler.post(autoScrollRunnable);
+        Log.d("AutoScroll", "Started auto-scroll with speed: " + finalSpeed);
+    }
+
+    private void stopAutoScroll() {
+        isAutoScrolling = false;
+        if (autoScrollRunnable != null) {
+            autoScrollHandler.removeCallbacks(autoScrollRunnable);
+            autoScrollRunnable = null;
+        }
     }
 
     private void startDrag(View view, Task task) {
         if (view.getParent() != null) {
             draggedTask = task;
+            isDragging = true;
             View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
-            view.startDragAndDrop(ClipData.newPlainText("", ""), shadowBuilder, null, 0);
+            ClipData dragData = ClipData.newPlainText("task", task.getTaskName());
+
+            // Always use global drag flags
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                view.startDragAndDrop(dragData, shadowBuilder, task, View.DRAG_FLAG_GLOBAL);
+            } else {
+                view.startDrag(dragData, shadowBuilder, task, 0);
+            }
+
+            Log.d("DragOperation", "Started drag for task: " + task.getTaskName());
         }
     }
 
@@ -135,30 +341,52 @@ public class project_detail extends AppCompatActivity {
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
                 return true;
+
+            case DragEvent.ACTION_DRAG_ENTERED:
+                // Visual feedback could be added here
+                return true;
+
+            case DragEvent.ACTION_DRAG_EXITED:
+                // Reset visual feedback if any
+                return true;
+
             case DragEvent.ACTION_DROP:
                 if (draggedTask != null) {
                     String oldStage = draggedTask.getStage();
+
+                    // Remove from all lists (to handle any case)
                     toDoList.remove(draggedTask);
                     inProgressList.remove(draggedTask);
                     completedList.remove(draggedTask);
 
+                    // Add to the target list with the new stage
                     draggedTask.setStage(targetStage);
                     targetList.add(draggedTask);
 
+                    // Update the database
                     updateTaskStageInFirestore(draggedTask);
 
                     // Handle task reminder logic
                     handleTaskReminder(draggedTask, oldStage, targetStage);
 
+                    // Notify all adapters that data has changed
                     toDoAdapter.notifyDataSetChanged();
                     inProgressAdapter.notifyDataSetChanged();
                     completedAdapter.notifyDataSetChanged();
 
                     draggedTask = null;
+                    isDragging = false;
                 }
+
+                // Stop auto-scrolling after drop
+                stopAutoScroll();
                 return true;
+
             case DragEvent.ACTION_DRAG_ENDED:
                 draggedTask = null;
+                isDragging = false;
+                // Stop auto-scrolling after drag ends
+                stopAutoScroll();
                 return true;
         }
         return false;
@@ -285,7 +513,7 @@ public class project_detail extends AppCompatActivity {
         Map<String, Object> taskData = new HashMap<>();
         taskData.put("taskName", taskName);
         taskData.put("status", status);
-        taskData.put("stage", "To Do"); // Default stage for new tasks
+        taskData.put("stage", "To Do");
 
         // Add required user assignment
         taskData.put("assignedUserId", assignedUser.getUid());
@@ -409,5 +637,21 @@ public class project_detail extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         fetchTasks();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Make sure to stop auto-scrolling when activity is paused
+        stopAutoScroll();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove any callbacks to prevent memory leaks
+        if (autoScrollHandler != null && autoScrollRunnable != null) {
+            autoScrollHandler.removeCallbacks(autoScrollRunnable);
+        }
     }
 }

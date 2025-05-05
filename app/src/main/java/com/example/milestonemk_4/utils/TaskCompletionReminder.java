@@ -124,8 +124,8 @@ public class TaskCompletionReminder extends BroadcastReceiver {
 
         // Set alarm to fire in 3 hours
         long currentTimeMillis = System.currentTimeMillis();
-        long threeHoursLater = currentTimeMillis + (60 * 1000);
-//        long threeHoursLater = currentTimeMillis + (3 * 60 * 60 * 1000);
+//        long threeHoursLater = currentTimeMillis + (60 * 1000);
+        long threeHoursLater = currentTimeMillis + (3 * 60 * 60 * 1000);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(
