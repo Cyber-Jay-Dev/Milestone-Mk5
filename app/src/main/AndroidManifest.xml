@@ -30,7 +30,6 @@
             android:name=".utils.NotificationReceiver"
             android:exported="false" />
 
-        <!-- Optional: Add this receiver to reschedule notifications on device reboot -->
         <receiver
             android:name=".utils.BootReceiver"
             android:exported="false">
@@ -39,11 +38,15 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".utils.TaskCompletionReminder"
+            android:enabled="true"
+            android:exported="false">
+        </receiver>
 
         <activity
             android:name=".activitiesUI.Add_Project"
             android:exported="false" />
-
         <activity
             android:name=".activitiesUI.project_detail"
             android:exported="false" />

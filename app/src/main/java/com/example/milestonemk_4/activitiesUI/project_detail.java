@@ -27,8 +27,11 @@ import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
+import com.example.milestonemk_4.utils.TaskCompletionReminder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -40,6 +43,7 @@ import java.util.Objects;
 
 public class project_detail extends AppCompatActivity {
 
+    private static final String TAG = "ProjectDetail";
     Dialog dialog;
     FirebaseFirestore db;
     String projectId;
@@ -133,6 +137,7 @@ public class project_detail extends AppCompatActivity {
                 return true;
             case DragEvent.ACTION_DROP:
                 if (draggedTask != null) {
+                    String oldStage = draggedTask.getStage();
                     toDoList.remove(draggedTask);
                     inProgressList.remove(draggedTask);
                     completedList.remove(draggedTask);
@@ -141,6 +146,9 @@ public class project_detail extends AppCompatActivity {
                     targetList.add(draggedTask);
 
                     updateTaskStageInFirestore(draggedTask);
+
+                    // Handle task reminder logic
+                    handleTaskReminder(draggedTask, oldStage, targetStage);
 
                     toDoAdapter.notifyDataSetChanged();
                     inProgressAdapter.notifyDataSetChanged();
@@ -154,6 +162,32 @@ public class project_detail extends AppCompatActivity {
                 return true;
         }
         return false;
+    }
+
+    // New method to handle task reminder logic
+    private void handleTaskReminder(Task task, String oldStage, String newStage) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            return;
+        }
+
+        // Only process reminders for tasks assigned to the current user
+        if (!currentUser.getUid().equals(task.getAssignedUserId())) {
+            return;
+        }
+
+        // For tasks moved to "In Progress", schedule a reminder
+        if (newStage.equals("In Progress")) {
+            // Schedule a reminder for 3 hours later
+            TaskCompletionReminder.scheduleTaskReminder(this, projectId, task.getTaskName());
+            Toast.makeText(this, "Reminder set for 3 hours", Toast.LENGTH_SHORT).show();
+        }
+
+        // For tasks moved to "Completed", cancel any existing reminder
+        else if (newStage.equals("Completed")) {
+            // Cancel reminder as task is completed
+            TaskCompletionReminder.cancelTaskReminder(this, task.getTaskName());
+        }
     }
 
     private void updateTaskStageInFirestore(Task task) {
@@ -264,6 +298,8 @@ public class project_detail extends AppCompatActivity {
                 .addOnSuccessListener(docRef -> {
                     Toast.makeText(this, "Task added successfully!", Toast.LENGTH_SHORT).show();
                     fetchTasks();
+
+                    // No need to schedule reminder here as new tasks start in "To Do"
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
