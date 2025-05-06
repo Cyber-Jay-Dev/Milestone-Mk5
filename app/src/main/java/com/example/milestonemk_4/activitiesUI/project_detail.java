@@ -130,12 +130,10 @@ public class project_detail extends AppCompatActivity {
                 }
         );
     }
-
     private void setupAutoScrollHandling() {
         autoScrollHandler = new Handler(Looper.getMainLooper());
         horizontalScrollView = findViewById(R.id.horizontalScrollView);
     }
-
     private void setupClickListeners() {
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
@@ -143,7 +141,6 @@ public class project_detail extends AppCompatActivity {
         backBtn.setOnClickListener(v -> finish());
         openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
     }
-
     private void validateAndSetProjectDetails() {
         projectId = getIntent().getStringExtra("projectId");
         String title = getIntent().getStringExtra("title");
@@ -157,7 +154,6 @@ public class project_detail extends AppCompatActivity {
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
     }
-
     private void initializeTaskLists() {
         toDoList = new ArrayList<>();
         inProgressList = new ArrayList<>();
@@ -167,7 +163,6 @@ public class project_detail extends AppCompatActivity {
         inProgressAdapter = new TaskAdapter(inProgressList);
         completedAdapter = new TaskAdapter(completedList);
     }
-
     private void setupRecyclerViews() {
         toDoRecyclerView = findViewById(R.id.taskRecyclerview);
         inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
@@ -183,13 +178,13 @@ public class project_detail extends AppCompatActivity {
 
         setupDragInteractions();
     }
-
     private void setupDragInteractions() {
         toDoAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
     }
 
+    @SuppressLint("UseCompatLoadingForDrawables")
     private void initializeTaskDialog() {
         dialog = new Dialog(this);
         dialog.setContentView(R.layout.add_task_dialog);

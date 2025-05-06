@@ -202,19 +202,20 @@ public class Add_Project extends AppCompatActivity implements CollaboratorAdapte
 
             if (!NetworkUtils.isNetworkAvailable(this)) {
                 Toast.makeText(this, "You are offline. Project will sync when online.", Toast.LENGTH_LONG).show();
+                setResult(RESULT_OK);
                 finish();
             } else {
                 db.collection("projects")
                         .add(projectData)
                         .addOnSuccessListener(documentReference -> {
                             Toast.makeText(this, "Project added!", Toast.LENGTH_SHORT).show();
+                            setResult(RESULT_OK);
                             finish();
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(this, "Error adding project", Toast.LENGTH_SHORT).show();
                         });
             }
-
         } else {
             Toast.makeText(this, "User not logged in!", Toast.LENGTH_SHORT).show();
         }

@@ -11,7 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -36,6 +37,21 @@ public class HomeFragment extends Fragment {
     private List<Project> projectList;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private ActivityResultLauncher<Intent> addProjectLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Initialize the ActivityResultLauncher
+        addProjectLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    // Refresh projects when returning from Add_Project activity
+                    loadProjects();
+                }
+        );
+    }
 
     @Nullable
     @Override
@@ -56,16 +72,18 @@ public class HomeFragment extends Fragment {
 
         fab.setOnClickListener(view1 -> {
             if (getContext() != null){
-                startActivity(new Intent(getContext(), Add_Project.class ));
+                // Launch Add_Project using the ActivityResultLauncher instead of startActivity
+                Intent intent = new Intent(getContext(), Add_Project.class);
+                addProjectLauncher.launch(intent);
             } else {
                 Toast.makeText(getContext(), "error", Toast.LENGTH_SHORT).show();
             }
-
         });
 
         loadProjects();
         return view;
     }
+
 
     @SuppressLint("NotifyDataSetChanged")
     private void loadProjects() {
@@ -122,6 +140,7 @@ public class HomeFragment extends Fragment {
                     });
         }
     }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);

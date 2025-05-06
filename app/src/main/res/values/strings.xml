@@ -32,7 +32,8 @@
     <string name="create_task">Create Task</string>
     <string name="enter_task_name">Enter task name</string>
 
-    <string name="select_status">Select Status</string>
+    <string name="select_status">Urgency</string>
     <string name="create_project">Create Project</string>
     <string name="profile_picture">Profile Picture</string>
+    <string name="submit">Submit</string>
 </resources>
