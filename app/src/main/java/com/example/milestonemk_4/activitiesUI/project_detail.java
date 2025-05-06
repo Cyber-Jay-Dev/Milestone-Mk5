@@ -111,6 +111,7 @@ public class project_detail extends AppCompatActivity {
         setupRecyclerViews();
         setupDragListeners();
     }
+
     private void initializeVariables() {
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
@@ -879,7 +880,6 @@ public class project_detail extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // Make sure to stop auto-scrolling when activity is paused
         stopAutoScroll();
     }
 
