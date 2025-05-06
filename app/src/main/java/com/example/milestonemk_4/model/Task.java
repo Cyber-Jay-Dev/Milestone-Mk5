@@ -14,11 +14,12 @@ public class Task {
     private String assignedUsername;
     private List<Map<String, String>> attachments;
 
+
     public Task() {
 
     }
 
-    public Task(String taskName, String status, String projectId) {
+    public Task(String taskName, String status, String stage) {
         this.taskName = taskName;
         this.status = status;
         this.stage = "To Do";
@@ -63,6 +64,7 @@ public class Task {
     public void setAssignedUsername(String assignedUsername) {
         this.assignedUsername = assignedUsername;
     }
+
     public List<Map<String, String>> getAttachments() {
         if (attachments == null) {
             attachments = new ArrayList<>();
