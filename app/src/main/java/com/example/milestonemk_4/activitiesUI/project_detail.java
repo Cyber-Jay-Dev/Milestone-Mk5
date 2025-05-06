@@ -15,7 +15,6 @@ import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -72,12 +71,11 @@ public class project_detail extends AppCompatActivity {
     List<User> userList;
 
     private Task draggedTask;
-    private Task currentCompletedTask; // To track which task is being completed
-    private final ArrayList<Uri> selectedFiles = new ArrayList<>(); // To store selected file URIs
+    private Task currentCompletedTask;
+    private ArrayList<Uri> selectedFiles = new ArrayList<>();
 
     private ActivityResultLauncher<String[]> filePickerLauncher;
 
-    // Auto-scroll related variables
     private HorizontalScrollView horizontalScrollView;
     private Handler autoScrollHandler;
     private Runnable autoScrollRunnable;
@@ -104,36 +102,49 @@ public class project_detail extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_project_detail);
 
+        initializeVariables();
+        setupFilePickerLauncher();
+        setupAutoScrollHandling();
+        setupClickListeners();
+        initializeTaskLists();
+        validateAndSetProjectDetails();
+        setupRecyclerViews();
+        setupDragListeners();
+    }
+    private void initializeVariables() {
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
+        screenWidth = getResources().getDisplayMetrics().widthPixels;
+        selectedFiles = new ArrayList<>();
+    }
 
+    private void setupFilePickerLauncher() {
         filePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> {
                     if (uris != null && !uris.isEmpty()) {
                         selectedFiles.clear();
                         selectedFiles.addAll(uris);
-
-                        // Show preview dialog with selected files
                         showFilePreviewDialog(selectedFiles);
                     }
                 }
         );
+    }
 
-
-        // Set up auto-scroll handling
+    private void setupAutoScrollHandling() {
         autoScrollHandler = new Handler(Looper.getMainLooper());
         horizontalScrollView = findViewById(R.id.horizontalScrollView);
+    }
 
-        // Get screen width for scroll calculations
-        screenWidth = getResources().getDisplayMetrics().widthPixels;
-
+    private void setupClickListeners() {
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
-        toDoRecyclerView = findViewById(R.id.taskRecyclerview);
-        inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
-        completedRecyclerView = findViewById(R.id.completedRecyclerView);
 
+        backBtn.setOnClickListener(v -> finish());
+        openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
+    }
+
+    private void validateAndSetProjectDetails() {
         projectId = getIntent().getStringExtra("projectId");
         String title = getIntent().getStringExtra("title");
 
@@ -143,23 +154,11 @@ public class project_detail extends AppCompatActivity {
             return;
         }
 
-
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
+    }
 
-        // Initialize dialog but don't show it yet - we'll use the enhanced version
-        dialog = new Dialog(this);
-        dialog.setContentView(R.layout.add_task_dialog);
-        Objects.requireNonNull(dialog.getWindow()).setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ActionBar.LayoutParams.WRAP_CONTENT
-        );
-        dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.dialog_bg));
-        dialog.setCancelable(true);
-
-        backBtn.setOnClickListener(v -> finish());
-        openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
-
+    private void initializeTaskLists() {
         toDoList = new ArrayList<>();
         inProgressList = new ArrayList<>();
         completedList = new ArrayList<>();
@@ -167,6 +166,12 @@ public class project_detail extends AppCompatActivity {
         toDoAdapter = new TaskAdapter(toDoList);
         inProgressAdapter = new TaskAdapter(inProgressList);
         completedAdapter = new TaskAdapter(completedList);
+    }
+
+    private void setupRecyclerViews() {
+        toDoRecyclerView = findViewById(R.id.taskRecyclerview);
+        inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
+        completedRecyclerView = findViewById(R.id.completedRecyclerView);
 
         toDoRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         inProgressRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -176,13 +181,24 @@ public class project_detail extends AppCompatActivity {
         inProgressRecyclerView.setAdapter(inProgressAdapter);
         completedRecyclerView.setAdapter(completedAdapter);
 
-        // Set long click listeners to start drag
+        setupDragInteractions();
+    }
+
+    private void setupDragInteractions() {
         toDoAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
+    }
 
-        // Set drag listeners with improved implementation
-        setupDragListeners();
+    private void initializeTaskDialog() {
+        dialog = new Dialog(this);
+        dialog.setContentView(R.layout.add_task_dialog);
+        Objects.requireNonNull(dialog.getWindow()).setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ActionBar.LayoutParams.WRAP_CONTENT
+        );
+        dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.dialog_bg));
+        dialog.setCancelable(true);
     }
 
     private void showSendFilesDialog(Task task) {
