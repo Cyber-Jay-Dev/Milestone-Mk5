@@ -33,6 +33,7 @@ import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.milestonemk_4.Adapter.AttachmentAdapter;
 import com.example.milestonemk_4.Adapter.FilePreviewAdapter;
 import com.example.milestonemk_4.Adapter.TaskAdapter;
 import com.example.milestonemk_4.Adapter.UserAutoCompleteAdapter;
@@ -76,26 +77,9 @@ public class project_detail extends AppCompatActivity {
 
     private ActivityResultLauncher<String[]> filePickerLauncher;
 
-    private HorizontalScrollView horizontalScrollView;
-    private Handler autoScrollHandler;
-    private Runnable autoScrollRunnable;
-    private boolean isAutoScrolling = false;
 
 
-    // Improved scroll threshold and speed settings
-    private static final int SCROLL_THRESHOLD = 200;
-    private static final int SCROLL_SPEED_SLOW = 8;
-    private static final int SCROLL_SPEED_MEDIUM = 15;
-    private static final int SCROLL_SPEED_FAST = 25;
-    private static final int SCROLL_ACCELERATE_THRESHOLD = 100;
-    private static final int SCROLL_FAST_THRESHOLD = 50;
-    private static final int SCROLL_DELAY = 10;
-
-    private int screenWidth;
-    private float lastTouchX;
-
-    private boolean isDragging = false;
-
+    // Improved scroll threshold and speed setting
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,18 +88,17 @@ public class project_detail extends AppCompatActivity {
 
         initializeVariables();
         setupFilePickerLauncher();
-        setupAutoScrollHandling();
+
         setupClickListeners();
         initializeTaskLists();
         validateAndSetProjectDetails();
         setupRecyclerViews();
-        setupDragListeners();
+
     }
 
     private void initializeVariables() {
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
-        screenWidth = getResources().getDisplayMetrics().widthPixels;
         selectedFiles = new ArrayList<>();
     }
 
@@ -131,10 +114,7 @@ public class project_detail extends AppCompatActivity {
                 }
         );
     }
-    private void setupAutoScrollHandling() {
-        autoScrollHandler = new Handler(Looper.getMainLooper());
-        horizontalScrollView = findViewById(R.id.horizontalScrollView);
-    }
+
     private void setupClickListeners() {
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
@@ -177,12 +157,8 @@ public class project_detail extends AppCompatActivity {
         inProgressRecyclerView.setAdapter(inProgressAdapter);
         completedRecyclerView.setAdapter(completedAdapter);
 
-        setupDragInteractions();
-    }
-    private void setupDragInteractions() {
-        toDoAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
-        inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
-        completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
+        completedAdapter.setOnItemClickListener(this::showTaskAttachmentsDialog);
+
     }
 
     @SuppressLint("UseCompatLoadingForDrawables")
@@ -269,68 +245,6 @@ public class project_detail extends AppCompatActivity {
     }
 
     // Method to upload files to Google Drive
-    private void uploadFilesToDrive(ArrayList<Uri> files) {
-        try {
-            // Create a share intent with multiple files
-            Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-            shareIntent.setType("*/*");
-
-            // Try to set Google Drive as target app
-            shareIntent.setPackage("com.google.android.apps.docs");
-
-            // Create ArrayList of URIs for attachments
-            ArrayList<Uri> uris = new ArrayList<>();
-
-            // Add all selected files to the intent
-            for (Uri fileUri : files) {
-                try {
-                    // Create a file in app's cache directory
-                    String fileName = getFileNameFromUri(fileUri);
-                    File cacheFile = createCacheFile(fileUri, fileName);
-
-                    // Get content URI through FileProvider
-                    Uri contentUri = FileProvider.getUriForFile(
-                            this,
-                            "com.example.milestonemk_4.fileprovider", // Must match the authority in your manifest
-                            cacheFile
-                    );
-
-                    // Add to list with permission
-                    uris.add(contentUri);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error preparing file: " + e.getMessage());
-                }
-            }
-
-            // Put URIs as extra
-            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-
-            // Add task name as subject
-            if (currentCompletedTask != null) {
-                shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Files for task: " + currentCompletedTask.getTaskName());
-            }
-
-            // Grant read permissions
-            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            // Try to start the activity
-            try {
-                startActivity(shareIntent);
-            } catch (ActivityNotFoundException e) {
-                // If Google Drive app is not found, try a more generic intent
-                Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-                genericShareIntent.setType("*/*");
-                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-                startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
-            }
-
-            Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error uploading files: " + e.getMessage());
-            Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     // Helper method to get file name from Uri
     private String getFileNameFromUri(Uri uri) {
@@ -377,190 +291,6 @@ public class project_detail extends AppCompatActivity {
             }
             outputStream.flush();
             return destFile;
-        }
-    }
-
-    private void setupDragListeners() {
-        // Set drag listeners for RecyclerViews
-        View.OnDragListener dragListener = (v, event) -> {
-            // Handle touch coordinates for auto-scroll during drag operation
-            if (isDragging && (event.getAction() == DragEvent.ACTION_DRAG_LOCATION
-                    || event.getAction() == DragEvent.ACTION_DRAG_ENTERED)) {
-                lastTouchX = event.getX() + ((View) v.getParent()).getLeft();
-                handleTouchForAutoScroll();
-            }
-
-            // Determine which RecyclerView is involved
-            if (v == toDoRecyclerView) {
-                return handleDrag(event, "To Do", toDoList, toDoAdapter);
-            } else if (v == inProgressRecyclerView) {
-                return handleDrag(event, "In Progress", inProgressList, inProgressAdapter);
-            } else if (v == completedRecyclerView) {
-                return handleDrag(event, "Completed", completedList, completedAdapter);
-            }
-            return false;
-        };
-
-        // Apply the same drag listener to all RecyclerViews
-        toDoRecyclerView.setOnDragListener(dragListener);
-        inProgressRecyclerView.setOnDragListener(dragListener);
-        completedRecyclerView.setOnDragListener(dragListener);
-
-        // Global drag listener for tracking drag state
-        View mainContainer = findViewById(R.id.mainContainer);
-        mainContainer.setOnDragListener((v, event) -> {
-            switch (event.getAction()) {
-                case DragEvent.ACTION_DRAG_STARTED:
-                    isDragging = true;
-                    return true;
-
-                case DragEvent.ACTION_DRAG_LOCATION:
-                    if (isDragging) {
-                        // Update last touch position for auto-scroll
-                        lastTouchX = event.getX();
-                        handleTouchForAutoScroll();
-                    }
-                    return true;
-
-                case DragEvent.ACTION_DRAG_ENDED:
-                case DragEvent.ACTION_DROP:
-                    isDragging = false;
-                    stopAutoScroll();
-                    return true;
-            }
-            return false;  // Don't consume the event
-        });
-    }
-
-    private void handleTouchForAutoScroll() {
-        if (!isDragging) return;
-
-        // Calculate if we're near the edges
-        int scrollX = horizontalScrollView.getScrollX();
-        int maxScrollX = horizontalScrollView.getChildAt(0).getWidth() - horizontalScrollView.getWidth();
-
-        // Get absolute position within the screen
-        int[] location = new int[2];
-        horizontalScrollView.getLocationOnScreen(location);
-        int absoluteX = (int) lastTouchX + location[0];
-
-        // Calculate appropriate scroll speed based on proximity to edge
-        int scrollSpeed = 0;
-
-        // Near left edge logic with improved three-tier speed system
-        if (absoluteX - location[0] < SCROLL_THRESHOLD) {
-            if (absoluteX - location[0] < SCROLL_FAST_THRESHOLD) {
-                // Very close to edge - fast scroll
-                scrollSpeed = -SCROLL_SPEED_FAST;
-            } else if (absoluteX - location[0] < SCROLL_ACCELERATE_THRESHOLD) {
-                // Moderately close - medium scroll
-                scrollSpeed = -SCROLL_SPEED_MEDIUM;
-            } else {
-                // Near edge - slower scroll
-                scrollSpeed = -SCROLL_SPEED_SLOW;
-            }
-        }
-        // Near right edge logic with improved three-tier speed system
-        else if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_THRESHOLD) {
-            if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_FAST_THRESHOLD) {
-                // Very close to edge - fast scroll
-                scrollSpeed = SCROLL_SPEED_FAST;
-            } else if (absoluteX > location[0] + horizontalScrollView.getWidth() - SCROLL_ACCELERATE_THRESHOLD) {
-                // Moderately close - medium scroll
-                scrollSpeed = SCROLL_SPEED_MEDIUM;
-            } else {
-                // Near edge - slower scroll
-                scrollSpeed = SCROLL_SPEED_SLOW;
-            }
-        }
-
-        // Log scroll logic for debugging
-        Log.d("AutoScroll", "Position: " + absoluteX + ", ScrollX: " + scrollX +
-                ", MaxScroll: " + maxScrollX + ", Speed: " + scrollSpeed);
-
-        // Apply scroll if needed
-        if (scrollSpeed != 0) {
-            startAutoScroll(scrollSpeed);
-        } else {
-            // Not near edges, stop auto-scrolling
-            stopAutoScroll();
-        }
-    }
-
-    private void startAutoScroll(int speed) {
-        final int finalSpeed = speed;
-
-        if (isAutoScrolling) {
-            // Update the current speed in the runnable
-            if (autoScrollRunnable != null) {
-                // The runnable will pick up the new position on next iteration
-                return;
-            }
-        }
-
-        isAutoScrolling = true;
-        autoScrollRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (!isAutoScrolling || !isDragging) {
-                    stopAutoScroll();
-                    return;
-                }
-
-                // Calculate current scroll position
-                int scrollX = horizontalScrollView.getScrollX();
-                int maxScrollX = horizontalScrollView.getChildAt(0).getWidth() - horizontalScrollView.getWidth();
-
-                // Get current speed calculation based on edge proximity
-                int currentSpeed = finalSpeed;
-
-                // Check if we can scroll in the desired direction
-                if ((currentSpeed > 0 && scrollX < maxScrollX) || (currentSpeed < 0 && scrollX > 0)) {
-                    // Scroll by the calculated amount
-                    horizontalScrollView.scrollBy(currentSpeed, 0);
-
-                    // Log actual scrolling for debugging
-                    Log.d("AutoScroll", "Scrolling with speed: " + currentSpeed +
-                            ", ScrollX: " + horizontalScrollView.getScrollX());
-
-                    // Schedule next scroll
-                    autoScrollHandler.postDelayed(this, SCROLL_DELAY);
-                } else {
-                    // Can't scroll further in this direction
-                    Log.d("AutoScroll", "Can't scroll further, stopping");
-                    stopAutoScroll();
-                }
-            }
-        };
-
-        // Start the scroll runnable
-        autoScrollHandler.post(autoScrollRunnable);
-        Log.d("AutoScroll", "Started auto-scroll with speed: " + finalSpeed);
-    }
-
-    private void stopAutoScroll() {
-        isAutoScrolling = false;
-        if (autoScrollRunnable != null) {
-            autoScrollHandler.removeCallbacks(autoScrollRunnable);
-            autoScrollRunnable = null;
-        }
-    }
-
-    private void startDrag(View view, Task task) {
-        if (view.getParent() != null) {
-            draggedTask = task;
-            isDragging = true;
-            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
-            ClipData dragData = ClipData.newPlainText("task", task.getTaskName());
-
-            // Always use global drag flags
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                view.startDragAndDrop(dragData, shadowBuilder, task, View.DRAG_FLAG_GLOBAL);
-            } else {
-                view.startDrag(dragData, shadowBuilder, task, 0);
-            }
-
-            Log.d("DragOperation", "Started drag for task: " + task.getTaskName());
         }
     }
 
@@ -613,19 +343,9 @@ public class project_detail extends AppCompatActivity {
                     completedAdapter.notifyDataSetChanged();
 
                     draggedTask = null;
-                    isDragging = false;
                 }
 
-                // Stop auto-scrolling after drop
-                stopAutoScroll();
-                return true;
-
-            case DragEvent.ACTION_DRAG_ENDED:
-                draggedTask = null;
-                isDragging = false;
-                // Stop auto-scrolling after drag ends
-                stopAutoScroll();
-                return true;
+                // Stop auto-scrolling after dr
         }
         return false;
     }
@@ -831,6 +551,151 @@ public class project_detail extends AppCompatActivity {
         void onUsersLoaded(List<User> users);
     }
 
+
+    private void showTaskAttachmentsDialog(Task task) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.task_attachments_dialog, null);
+        builder.setView(dialogView);
+
+        TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
+        dialogTitle.setText("Attachments: " + task.getTaskName());
+
+        TextView noAttachmentsText = dialogView.findViewById(R.id.no_attachments_text);
+        RecyclerView attachmentsRecyclerView = dialogView.findViewById(R.id.attachments_recycler_view);
+        Button btnClose = dialogView.findViewById(R.id.btn_close);
+
+        List<Map<String, String>> attachments = task.getAttachments();
+
+        if (attachments == null || attachments.isEmpty()) {
+            noAttachmentsText.setVisibility(View.VISIBLE);
+            attachmentsRecyclerView.setVisibility(View.GONE);
+        } else {
+            noAttachmentsText.setVisibility(View.GONE);
+            attachmentsRecyclerView.setVisibility(View.VISIBLE);
+
+            // Set up RecyclerView
+            attachmentsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+            AttachmentAdapter attachmentAdapter = new AttachmentAdapter(this, attachments);
+            attachmentsRecyclerView.setAdapter(attachmentAdapter);
+        }
+
+        AlertDialog dialog = builder.create();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+    private void uploadFilesToDrive(ArrayList<Uri> files) {
+        try {
+            // Create a share intent with multiple files
+            Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+            shareIntent.setType("*/*");
+
+            // Try to set Google Drive as target app
+            shareIntent.setPackage("com.google.android.apps.docs");
+
+            // Create ArrayList of URIs for attachments
+            ArrayList<Uri> uris = new ArrayList<>();
+
+            // List to store file information
+            List<Map<String, String>> fileAttachments = new ArrayList<>();
+
+            // Add all selected files to the intent
+            for (Uri fileUri : files) {
+                try {
+                    // Create a file in app's cache directory
+                    String fileName = getFileNameFromUri(fileUri);
+                    File cacheFile = createCacheFile(fileUri, fileName);
+
+                    // Get content URI through FileProvider
+                    Uri contentUri = FileProvider.getUriForFile(
+                            this,
+                            "com.example.milestonemk_4.fileprovider", // Must match the authority in your manifest
+                            cacheFile
+                    );
+
+                    // Add to list with permission
+                    uris.add(contentUri);
+
+                    // Save file information to the list
+                    Map<String, String> fileInfo = new HashMap<>();
+                    fileInfo.put("name", fileName);
+                    fileInfo.put("uri", contentUri.toString());
+                    fileAttachments.add(fileInfo);
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error preparing file: " + e.getMessage());
+                }
+            }
+
+            // Put URIs as extra
+            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+
+            // Add task name as subject
+            if (currentCompletedTask != null) {
+                shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Files for task: " + currentCompletedTask.getTaskName());
+
+                // Save file attachments to the task in Firestore
+                saveAttachmentsToTask(currentCompletedTask, fileAttachments);
+            }
+
+            // Grant read permissions
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // Try to start the activity
+            try {
+                startActivity(shareIntent);
+            } catch (ActivityNotFoundException e) {
+                // If Google Drive app is not found, try a more generic intent
+                Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                genericShareIntent.setType("*/*");
+                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
+            }
+
+            Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading files: " + e.getMessage());
+            Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void saveAttachmentsToTask(Task task, List<Map<String, String>> attachments) {
+        if (task == null || attachments == null || attachments.isEmpty()) {
+            return;
+        }
+
+        // Find the task document in Firestore
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .whereEqualTo("taskName", task.getTaskName())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.isEmpty()) {
+                        DocumentSnapshot taskDoc = snapshot.getDocuments().get(0);
+
+                        // Update the task with attachments
+                        db.collection("projects")
+                                .document(projectId)
+                                .collection("tasks")
+                                .document(taskDoc.getId())
+                                .update("attachments", attachments)
+                                .addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(this, "Attachments saved successfully", Toast.LENGTH_SHORT).show();
+                                    // Update local task object
+                                    task.setAttachments(attachments);
+                                    // Refresh the task list
+                                    fetchTasks();
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Error saving attachments: " + e.getMessage());
+                                    Toast.makeText(this, "Failed to save attachments", Toast.LENGTH_SHORT).show();
+                                });
+                    }
+                });
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     private void fetchTasks() {
         db.collection("projects")
@@ -849,11 +714,19 @@ public class project_detail extends AppCompatActivity {
                         String assignedUserId = doc.getString("assignedUserId");
                         String assignedUsername = doc.getString("assignedUsername");
 
+                        // Retrieve attachments from Firestore
+                        List<Map<String, String>> attachments = (List<Map<String, String>>) doc.get("attachments");
+
                         Task task = new Task(taskName, status, stage);
 
                         // Set assigned user information
                         task.setAssignedUserId(assignedUserId);
                         task.setAssignedUsername(assignedUsername);
+
+                        // Set attachments if they exist
+                        if (attachments != null && !attachments.isEmpty()) {
+                            task.setAttachments(attachments);
+                        }
 
                         if (stage == null || stage.equals("To Do")) {
                             toDoList.add(task);
@@ -870,7 +743,6 @@ public class project_detail extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
-
     @Override
     protected void onStart() {
         super.onStart();
@@ -880,15 +752,11 @@ public class project_detail extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        stopAutoScroll();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Remove any callbacks to prevent memory leaks
-        if (autoScrollHandler != null && autoScrollRunnable != null) {
-            autoScrollHandler.removeCallbacks(autoScrollRunnable);
-        }
     }
+
 }
