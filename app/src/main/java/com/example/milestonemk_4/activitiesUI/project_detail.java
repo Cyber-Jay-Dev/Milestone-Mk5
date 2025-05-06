@@ -585,6 +585,16 @@ public class project_detail extends AppCompatActivity {
                     // Handle task reminder logic
                     handleTaskReminder(draggedTask, oldStage, targetStage);
 
+                    // Show the send files dialog if the task is moved to Completed
+                    // and it belongs to the current user
+                    if (targetStage.equals("Completed")) {
+                        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                        if (currentUser != null && currentUser.getUid().equals(draggedTask.getAssignedUserId())) {
+                            // Show dialog to send files
+                            showSendFilesDialog(draggedTask);
+                        }
+                    }
+
                     // Notify all adapters that data has changed
                     toDoAdapter.notifyDataSetChanged();
                     inProgressAdapter.notifyDataSetChanged();
