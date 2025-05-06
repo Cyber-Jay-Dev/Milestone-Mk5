@@ -4,11 +4,15 @@ import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Dialog;
 import android.content.ClipData;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.DragEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +24,8 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -31,6 +37,7 @@ import com.example.milestonemk_4.R;
 import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
+import com.example.milestonemk_4.service.DropboxService;
 import com.example.milestonemk_4.utils.TaskCompletionReminder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
@@ -78,6 +85,11 @@ public class project_detail extends AppCompatActivity {
     private float lastTouchX;
 
     private boolean isDragging = false;
+
+    private DropboxService dropboxService;
+    private Uri selectedFileUri;
+    private Task taskForUpload;
+    private ActivityResultLauncher<String> filePickerLauncher;
 
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
@@ -149,6 +161,144 @@ public class project_detail extends AppCompatActivity {
 
         // Set drag listeners with improved implementation
         setupDragListeners();
+
+        dropboxService = new DropboxService(this);
+
+        // Initialize the file picker launcher
+        filePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        selectedFileUri = uri;
+                        if (taskForUpload != null) {
+                            showDropboxUploadDialog(taskForUpload);
+                        }
+                    }
+                });
+    }
+    private void showDropboxAuthPrompt() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Dropbox Upload");
+        builder.setMessage("To upload files to Dropbox, you need to connect your Dropbox account first.");
+        builder.setPositiveButton("Connect", (dialog, which) -> {
+            Intent intent = new Intent(this, DropboxAuthActivity.class);
+            startActivity(intent);
+        });
+        builder.setNegativeButton("Skip", null);
+        builder.show();
+    }
+    private void showDropboxFilePickerDialog(Task task) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Upload to Dropbox");
+        builder.setMessage("Task completed! Would you like to upload files related to this task to Dropbox?");
+        builder.setPositiveButton("Choose File", (dialog, which) -> {
+            taskForUpload = task;
+            filePickerLauncher.launch("*/*");
+        });
+        builder.setNegativeButton("Skip", null);
+        builder.show();
+    }
+    private void showDropboxUploadDialog(Task task) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_dropbox_upload, null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+
+        TextView fileNameText = dialogView.findViewById(R.id.fileNameText);
+        Button pickFileButton = dialogView.findViewById(R.id.pickFileButton);
+        Button uploadButton = dialogView.findViewById(R.id.uploadButton);
+        Button cancelButton = dialogView.findViewById(R.id.cancelButton);
+
+        // Get filename from Uri
+        String fileName = getFileNameFromUri(selectedFileUri);
+        fileNameText.setText(fileName);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        pickFileButton.setOnClickListener(v -> {
+            filePickerLauncher.launch("*/*");
+            dialog.dismiss();
+        });
+
+        uploadButton.setOnClickListener(v -> {
+            if (selectedFileUri != null) {
+                // Show progress
+                dialog.dismiss();
+                AlertDialog progressDialog = new AlertDialog.Builder(this)
+                        .setTitle("Uploading")
+                        .setMessage("Uploading file to Dropbox...")
+                        .setCancelable(false)
+                        .create();
+                progressDialog.show();
+
+                // Upload the file
+                dropboxService.uploadFile(selectedFileUri, task.getTaskName(), new DropboxService.UploadCallback() {
+                    @Override
+                    public void onUploadSuccess(String fileName, String path) {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(project_detail.this,
+                                    "File uploaded to " + path, Toast.LENGTH_LONG).show();
+                        });
+                    }
+
+                    @Override
+                    public void onUploadFailure(String errorMessage) {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(project_detail.this,
+                                    "Upload failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+            } else {
+                Toast.makeText(this, "Please select a file first", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    // Helper method to get file name from Uri
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (columnIndex != -1) {
+                        result = cursor.getString(columnIndex);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Could not get file name", e);
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) {
+                result = result.substring(cut + 1);
+            }
+        }
+        return result;
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.project_detail_menu, null);
+        menu.add(Menu.NONE, 1, Menu.NONE, "Dropbox Settings");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 1) {
+            // Open Dropbox settings
+            Intent intent = new Intent(this, DropboxAuthActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void setupDragListeners() {
@@ -339,14 +489,21 @@ public class project_detail extends AppCompatActivity {
     private boolean handleDrag(DragEvent event, String targetStage, List<Task> targetList, TaskAdapter targetAdapter) {
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
+                // Return true to indicate we're interested in the drag event
                 return true;
 
             case DragEvent.ACTION_DRAG_ENTERED:
-                // Visual feedback could be added here
+                // Visual feedback when drag enters this view
+                Log.d("DragOperation", "Drag entered: " + targetStage);
+                return true;
+
+            case DragEvent.ACTION_DRAG_LOCATION:
+                // Update coordinates for auto-scroll
                 return true;
 
             case DragEvent.ACTION_DRAG_EXITED:
-                // Reset visual feedback if any
+                // Visual feedback when drag exits this view
+                Log.d("DragOperation", "Drag exited: " + targetStage);
                 return true;
 
             case DragEvent.ACTION_DROP:
@@ -368,11 +525,23 @@ public class project_detail extends AppCompatActivity {
                     // Handle task reminder logic
                     handleTaskReminder(draggedTask, oldStage, targetStage);
 
+                    // Show Dropbox upload dialog when a task is moved to completed
+                    if (targetStage.equals("Completed")) {
+                        if (dropboxService.isAuthenticated()) {
+                            // If authenticated, show file picker
+                            showDropboxFilePickerDialog(draggedTask);
+                        } else {
+                            // If not authenticated, show auth prompt
+                            showDropboxAuthPrompt();
+                        }
+                    }
+
                     // Notify all adapters that data has changed
                     toDoAdapter.notifyDataSetChanged();
                     inProgressAdapter.notifyDataSetChanged();
                     completedAdapter.notifyDataSetChanged();
 
+                    Log.d("DragOperation", "Task dropped: " + draggedTask.getTaskName() + " to " + targetStage);
                     draggedTask = null;
                     isDragging = false;
                 }
@@ -382,13 +551,15 @@ public class project_detail extends AppCompatActivity {
                 return true;
 
             case DragEvent.ACTION_DRAG_ENDED:
-                draggedTask = null;
+                // Clean up after drag operation ends, whether or not it resulted in a drop
+                Log.d("DragOperation", "Drag ended");
                 isDragging = false;
-                // Stop auto-scrolling after drag ends
                 stopAutoScroll();
                 return true;
+
+            default:
+                return false;
         }
-        return false;
     }
 
     // New method to handle task reminder logic
