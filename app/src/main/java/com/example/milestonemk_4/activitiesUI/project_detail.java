@@ -3,12 +3,18 @@ package com.example.milestonemk_4.activitiesUI;
 import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Dialog;
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.DragEvent;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,11 +26,15 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.milestonemk_4.Adapter.FilePreviewAdapter;
 import com.example.milestonemk_4.Adapter.TaskAdapter;
 import com.example.milestonemk_4.Adapter.UserAutoCompleteAdapter;
 import com.example.milestonemk_4.R;
@@ -39,6 +49,10 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,12 +72,17 @@ public class project_detail extends AppCompatActivity {
     List<User> userList;
 
     private Task draggedTask;
+    private Task currentCompletedTask; // To track which task is being completed
+    private final ArrayList<Uri> selectedFiles = new ArrayList<>(); // To store selected file URIs
+
+    private ActivityResultLauncher<String[]> filePickerLauncher;
 
     // Auto-scroll related variables
     private HorizontalScrollView horizontalScrollView;
     private Handler autoScrollHandler;
     private Runnable autoScrollRunnable;
     private boolean isAutoScrolling = false;
+
 
     // Improved scroll threshold and speed settings
     private static final int SCROLL_THRESHOLD = 200;
@@ -88,6 +107,20 @@ public class project_detail extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
 
+        filePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> {
+                    if (uris != null && !uris.isEmpty()) {
+                        selectedFiles.clear();
+                        selectedFiles.addAll(uris);
+
+                        // Show preview dialog with selected files
+                        showFilePreviewDialog(selectedFiles);
+                    }
+                }
+        );
+
+
         // Set up auto-scroll handling
         autoScrollHandler = new Handler(Looper.getMainLooper());
         horizontalScrollView = findViewById(R.id.horizontalScrollView);
@@ -109,6 +142,7 @@ public class project_detail extends AppCompatActivity {
             finish();
             return;
         }
+
 
         TextView titleView = findViewById(R.id.ProjName);
         titleView.setText(title);
@@ -149,6 +183,189 @@ public class project_detail extends AppCompatActivity {
 
         // Set drag listeners with improved implementation
         setupDragListeners();
+    }
+
+    private void showSendFilesDialog(Task task) {
+        // Store current task being completed
+        currentCompletedTask = task;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.send_files_dialog, null);
+        builder.setView(dialogView);
+
+        Button btnSkip = dialogView.findViewById(R.id.btn_skip);
+        Button btnSendFiles = dialogView.findViewById(R.id.btn_send_files);
+
+        AlertDialog sendFilesDialog = builder.create();
+        sendFilesDialog.setCancelable(false); // Force user to make a choice
+
+        btnSkip.setOnClickListener(v -> {
+            // Just close the dialog
+            sendFilesDialog.dismiss();
+            Toast.makeText(this, "Task marked complete!", Toast.LENGTH_SHORT).show();
+        });
+
+        btnSendFiles.setOnClickListener(v -> {
+            // Close dialog and launch file picker
+            sendFilesDialog.dismiss();
+            launchFilePicker();
+        });
+
+        sendFilesDialog.show();
+    }
+
+    // Method to launch the file picker
+    private void launchFilePicker() {
+        try {
+            // Launch file picker to select multiple files
+            filePickerLauncher.launch(new String[]{"*/*"});
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching file picker: " + e.getMessage());
+            Toast.makeText(this, "Error opening file picker", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Method to show preview of selected files
+    private void showFilePreviewDialog(ArrayList<Uri> files) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.file_preview_dialog, null);
+        builder.setView(dialogView);
+
+        RecyclerView fileRecyclerView = dialogView.findViewById(R.id.fileRecyclerView);
+        Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
+        Button btnUpload = dialogView.findViewById(R.id.btn_upload);
+
+        // Setup recycler view with file names
+        fileRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        FilePreviewAdapter fileAdapter = new FilePreviewAdapter(this, files);
+        fileRecyclerView.setAdapter(fileAdapter);
+
+        AlertDialog previewDialog = builder.create();
+
+        btnCancel.setOnClickListener(v -> {
+            selectedFiles.clear();
+            previewDialog.dismiss();
+        });
+
+        btnUpload.setOnClickListener(v -> {
+            previewDialog.dismiss();
+            // Upload files to Google Drive
+            uploadFilesToDrive(files);
+        });
+
+        previewDialog.show();
+    }
+
+    // Method to upload files to Google Drive
+    private void uploadFilesToDrive(ArrayList<Uri> files) {
+        try {
+            // Create a share intent with multiple files
+            Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+            shareIntent.setType("*/*");
+
+            // Try to set Google Drive as target app
+            shareIntent.setPackage("com.google.android.apps.docs");
+
+            // Create ArrayList of URIs for attachments
+            ArrayList<Uri> uris = new ArrayList<>();
+
+            // Add all selected files to the intent
+            for (Uri fileUri : files) {
+                try {
+                    // Create a file in app's cache directory
+                    String fileName = getFileNameFromUri(fileUri);
+                    File cacheFile = createCacheFile(fileUri, fileName);
+
+                    // Get content URI through FileProvider
+                    Uri contentUri = FileProvider.getUriForFile(
+                            this,
+                            "com.example.milestonemk_4.fileprovider", // Must match the authority in your manifest
+                            cacheFile
+                    );
+
+                    // Add to list with permission
+                    uris.add(contentUri);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error preparing file: " + e.getMessage());
+                }
+            }
+
+            // Put URIs as extra
+            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+
+            // Add task name as subject
+            if (currentCompletedTask != null) {
+                shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Files for task: " + currentCompletedTask.getTaskName());
+            }
+
+            // Grant read permissions
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // Try to start the activity
+            try {
+                startActivity(shareIntent);
+            } catch (ActivityNotFoundException e) {
+                // If Google Drive app is not found, try a more generic intent
+                Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                genericShareIntent.setType("*/*");
+                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
+            }
+
+            Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading files: " + e.getMessage());
+            Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Helper method to get file name from Uri
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex >= 0) {
+                        result = cursor.getString(nameIndex);
+                    }
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.getLastPathSegment();
+        }
+        return result != null ? result : "unknown_file";
+    }
+
+    // Helper method to create a cache file from Uri
+    private File createCacheFile(Uri sourceUri, String fileName) throws IOException {
+        // Create cache directory if it doesn't exist
+        File cacheDir = new File(getCacheDir(), "shared_files");
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs();
+        }
+
+        // Create the file in cache
+        File destFile = new File(cacheDir, fileName);
+
+        // Copy content from uri to the cache file
+        try (InputStream inputStream = getContentResolver().openInputStream(sourceUri);
+             FileOutputStream outputStream = new FileOutputStream(destFile)) {
+
+            if (inputStream == null) {
+                throw new IOException("Failed to open input stream");
+            }
+
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+            return destFile;
+        }
     }
 
     private void setupDragListeners() {
