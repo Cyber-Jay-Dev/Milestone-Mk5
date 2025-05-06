@@ -3,10 +3,10 @@ package com.example.milestonemk_4.Adapter;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.AttachmentViewHolder> {
+    private static final String TAG = "AttachmentAdapter";
     private Context context;
     private List<Map<String, String>> attachments;
 
@@ -47,11 +48,23 @@ public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.At
         holder.itemView.setOnClickListener(v -> {
             if (fileUri != null && !fileUri.isEmpty()) {
                 try {
+                    Log.d(TAG, "Opening file URI: " + fileUri);
                     Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(fileUri));
+
+                    // Parse the URI string into a Uri object
+                    Uri uri = Uri.parse(fileUri);
+
+                    // Set data URI
+                    intent.setData(uri);
+
+                    // Add necessary flags
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                    // Start activity
                     context.startActivity(intent);
                 } catch (Exception e) {
+                    Log.e(TAG, "Cannot open this file: " + e.getMessage(), e);
                     Toast.makeText(context, "Cannot open this file: " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                 }

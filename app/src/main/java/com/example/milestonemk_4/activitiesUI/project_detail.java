@@ -172,18 +172,6 @@ public class project_detail extends AppCompatActivity {
         completedAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
     }
 
-    @SuppressLint("UseCompatLoadingForDrawables")
-    private void initializeTaskDialog() {
-        dialog = new Dialog(this);
-        dialog.setContentView(R.layout.add_task_dialog);
-        Objects.requireNonNull(dialog.getWindow()).setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ActionBar.LayoutParams.WRAP_CONTENT
-        );
-        dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.dialog_bg));
-        dialog.setCancelable(true);
-    }
-
     private void showSendFilesDialog(Task task) {
         // Store current task being completed
         currentCompletedTask = task;
@@ -254,57 +242,6 @@ public class project_detail extends AppCompatActivity {
 
         previewDialog.show();
     }
-
-
-
-    // Helper method to get file name from Uri
-    private String getFileNameFromUri(Uri uri) {
-        String result = null;
-        if (uri.getScheme().equals("content")) {
-            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                    if (nameIndex >= 0) {
-                        result = cursor.getString(nameIndex);
-                    }
-                }
-            }
-        }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result != null ? result : "unknown_file";
-    }
-
-    // Helper method to create a cache file from Uri
-    private File createCacheFile(Uri sourceUri, String fileName) throws IOException {
-        // Create cache directory if it doesn't exist
-        File cacheDir = new File(getCacheDir(), "shared_files");
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs();
-        }
-
-        // Create the file in cache
-        File destFile = new File(cacheDir, fileName);
-
-        // Copy content from uri to the cache file
-        try (InputStream inputStream = getContentResolver().openInputStream(sourceUri);
-             FileOutputStream outputStream = new FileOutputStream(destFile)) {
-
-            if (inputStream == null) {
-                throw new IOException("Failed to open input stream");
-            }
-
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-            outputStream.flush();
-            return destFile;
-        }
-    }
-
     private void setupDragListeners() {
         // Set drag listeners for RecyclerViews
         View.OnDragListener dragListener = (v, event) -> {
@@ -816,7 +753,7 @@ public class project_detail extends AppCompatActivity {
             shareIntent.setPackage("com.google.android.apps.docs");
 
             // Create ArrayList of URIs for attachments
-            ArrayList<Uri> uris = new ArrayList<>();
+            ArrayList<Uri> contentUris = new ArrayList<>();
 
             // List to store file information
             List<Map<String, String>> fileAttachments = new ArrayList<>();
@@ -836,21 +773,26 @@ public class project_detail extends AppCompatActivity {
                     );
 
                     // Add to list with permission
-                    uris.add(contentUri);
+                    contentUris.add(contentUri);
 
-                    // Save file information to the list
+                    // Save the content URI as string
                     Map<String, String> fileInfo = new HashMap<>();
                     fileInfo.put("name", fileName);
-                    fileInfo.put("uri", contentUri.toString());
+
+                    // Store the content URI as string - make sure it includes the scheme and authority
+                    String uriString = contentUri.toString();
+                    fileInfo.put("uri", uriString);
+
+                    Log.d(TAG, "Adding attachment: name=" + fileName + ", uri=" + uriString);
                     fileAttachments.add(fileInfo);
 
                 } catch (Exception e) {
-                    Log.e(TAG, "Error preparing file: " + e.getMessage());
+                    Log.e(TAG, "Error preparing file: " + e.getMessage(), e);
                 }
             }
 
             // Put URIs as extra
-            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, contentUris);
 
             // Add task name as subject
             if (currentCompletedTask != null) {
@@ -870,51 +812,16 @@ public class project_detail extends AppCompatActivity {
                 // If Google Drive app is not found, try a more generic intent
                 Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
                 genericShareIntent.setType("*/*");
-                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, contentUris);
                 startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
             }
 
             Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
 
         } catch (Exception e) {
-            Log.e(TAG, "Error uploading files: " + e.getMessage());
+            Log.e(TAG, "Error uploading files: " + e.getMessage(), e);
             Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
         }
-    }
-    private void saveAttachmentsToTask(Task task, List<Map<String, String>> attachments) {
-        if (task == null || attachments == null || attachments.isEmpty()) {
-            return;
-        }
-
-        // Find the task document in Firestore
-        db.collection("projects")
-                .document(projectId)
-                .collection("tasks")
-                .whereEqualTo("taskName", task.getTaskName())
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    if (!snapshot.isEmpty()) {
-                        DocumentSnapshot taskDoc = snapshot.getDocuments().get(0);
-
-                        // Update the task with attachments
-                        db.collection("projects")
-                                .document(projectId)
-                                .collection("tasks")
-                                .document(taskDoc.getId())
-                                .update("attachments", attachments)
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "Attachments saved successfully", Toast.LENGTH_SHORT).show();
-                                    // Update local task object
-                                    task.setAttachments(attachments);
-                                    // Refresh the task list
-                                    fetchTasks();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Error saving attachments: " + e.getMessage());
-                                    Toast.makeText(this, "Failed to save attachments", Toast.LENGTH_SHORT).show();
-                                });
-                    }
-                });
     }
     @SuppressLint("NotifyDataSetChanged")
     private void fetchTasks() {
@@ -963,7 +870,121 @@ public class project_detail extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if (uri.getScheme() != null && uri.getScheme().equals("content")) {
+            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex >= 0) {
+                        result = cursor.getString(nameIndex);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting filename from URI: " + e.getMessage(), e);
+            }
+        }
+        if (result == null) {
+            result = uri.getLastPathSegment();
+        }
+        return result != null ? result : "unknown_file";
+    }
 
+    private File createCacheFile(Uri sourceUri, String fileName) throws IOException {
+        // Create cache directory if it doesn't exist
+        File cacheDir = new File(getCacheDir(), "shared_files");
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs();
+        }
+
+        // Create the file in cache - use a unique name to avoid conflicts
+        String uniqueFileName = System.currentTimeMillis() + "_" + fileName;
+        File destFile = new File(cacheDir, uniqueFileName);
+
+        // Copy content from uri to the cache file
+        try (InputStream inputStream = getContentResolver().openInputStream(sourceUri);
+             FileOutputStream outputStream = new FileOutputStream(destFile)) {
+
+            if (inputStream == null) {
+                throw new IOException("Failed to open input stream");
+            }
+
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+
+            // Make sure the file is readable by other apps
+            destFile.setReadable(true, false);
+
+            Log.d(TAG, "Created cache file: " + destFile.getAbsolutePath());
+            return destFile;
+        }
+    }
+
+    private void saveAttachmentsToTask(Task task, List<Map<String, String>> attachments) {
+        if (task == null || attachments == null || attachments.isEmpty()) {
+            return;
+        }
+
+        Log.d(TAG, "Saving " + attachments.size() + " attachments to task: " + task.getTaskName());
+
+        // Find the task document in Firestore
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .whereEqualTo("taskName", task.getTaskName())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.isEmpty()) {
+                        DocumentSnapshot taskDoc = snapshot.getDocuments().get(0);
+
+                        // Get existing attachments if any
+                        List<Map<String, String>> existingAttachments =
+                                (List<Map<String, String>>) taskDoc.get("attachments");
+
+                        // Combine with new attachments
+                        List<Map<String, String>> allAttachments = new ArrayList<>();
+                        if (existingAttachments != null) {
+                            allAttachments.addAll(existingAttachments);
+                        }
+                        allAttachments.addAll(attachments);
+
+                        // Log for debugging
+                        for (Map<String, String> attachment : allAttachments) {
+                            Log.d(TAG, "Attachment being saved: " + attachment.get("name") +
+                                    " URI: " + attachment.get("uri"));
+                        }
+
+                        // Update the task with all attachments
+                        db.collection("projects")
+                                .document(projectId)
+                                .collection("tasks")
+                                .document(taskDoc.getId())
+                                .update("attachments", allAttachments)
+                                .addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(this, "Attachments saved successfully", Toast.LENGTH_SHORT).show();
+                                    // Update local task object
+                                    task.setAttachments(allAttachments);
+                                    // Refresh the task list
+                                    fetchTasks();
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Error saving attachments: " + e.getMessage(), e);
+                                    Toast.makeText(this, "Failed to save attachments", Toast.LENGTH_SHORT).show();
+                                });
+                    } else {
+                        Log.e(TAG, "Task not found in Firestore");
+                        Toast.makeText(this, "Task not found, could not save attachments", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error finding task: " + e.getMessage(), e);
+                    Toast.makeText(this, "Error finding task", Toast.LENGTH_SHORT).show();
+                });
+    }
 
     @Override
     protected void onStart() {
