@@ -33,6 +33,7 @@ import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.milestonemk_4.Adapter.AttachmentAdapter;
 import com.example.milestonemk_4.Adapter.FilePreviewAdapter;
 import com.example.milestonemk_4.Adapter.TaskAdapter;
 import com.example.milestonemk_4.Adapter.UserAutoCompleteAdapter;
@@ -164,21 +165,7 @@ public class project_detail extends AppCompatActivity {
         inProgressAdapter = new TaskAdapter(inProgressList);
         completedAdapter = new TaskAdapter(completedList);
     }
-    private void setupRecyclerViews() {
-        toDoRecyclerView = findViewById(R.id.taskRecyclerview);
-        inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
-        completedRecyclerView = findViewById(R.id.completedRecyclerView);
 
-        toDoRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        inProgressRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        completedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        toDoRecyclerView.setAdapter(toDoAdapter);
-        inProgressRecyclerView.setAdapter(inProgressAdapter);
-        completedRecyclerView.setAdapter(completedAdapter);
-
-        setupDragInteractions();
-    }
     private void setupDragInteractions() {
         toDoAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
         inProgressAdapter.setOnItemLongClickListener((task, view) -> startDrag(view, task));
@@ -268,69 +255,7 @@ public class project_detail extends AppCompatActivity {
         previewDialog.show();
     }
 
-    // Method to upload files to Google Drive
-    private void uploadFilesToDrive(ArrayList<Uri> files) {
-        try {
-            // Create a share intent with multiple files
-            Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-            shareIntent.setType("*/*");
 
-            // Try to set Google Drive as target app
-            shareIntent.setPackage("com.google.android.apps.docs");
-
-            // Create ArrayList of URIs for attachments
-            ArrayList<Uri> uris = new ArrayList<>();
-
-            // Add all selected files to the intent
-            for (Uri fileUri : files) {
-                try {
-                    // Create a file in app's cache directory
-                    String fileName = getFileNameFromUri(fileUri);
-                    File cacheFile = createCacheFile(fileUri, fileName);
-
-                    // Get content URI through FileProvider
-                    Uri contentUri = FileProvider.getUriForFile(
-                            this,
-                            "com.example.milestonemk_4.fileprovider", // Must match the authority in your manifest
-                            cacheFile
-                    );
-
-                    // Add to list with permission
-                    uris.add(contentUri);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error preparing file: " + e.getMessage());
-                }
-            }
-
-            // Put URIs as extra
-            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-
-            // Add task name as subject
-            if (currentCompletedTask != null) {
-                shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Files for task: " + currentCompletedTask.getTaskName());
-            }
-
-            // Grant read permissions
-            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            // Try to start the activity
-            try {
-                startActivity(shareIntent);
-            } catch (ActivityNotFoundException e) {
-                // If Google Drive app is not found, try a more generic intent
-                Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-                genericShareIntent.setType("*/*");
-                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-                startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
-            }
-
-            Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error uploading files: " + e.getMessage());
-            Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     // Helper method to get file name from Uri
     private String getFileNameFromUri(Uri uri) {
@@ -831,6 +756,166 @@ public class project_detail extends AppCompatActivity {
         void onUsersLoaded(List<User> users);
     }
 
+    private void setupRecyclerViews() {
+        toDoRecyclerView = findViewById(R.id.taskRecyclerview);
+        inProgressRecyclerView = findViewById(R.id.inProgressRecyclerView);
+        completedRecyclerView = findViewById(R.id.completedRecyclerView);
+
+        toDoRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        inProgressRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        completedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        toDoRecyclerView.setAdapter(toDoAdapter);
+        inProgressRecyclerView.setAdapter(inProgressAdapter);
+        completedRecyclerView.setAdapter(completedAdapter);
+
+        setupDragInteractions();
+        // Add click listener for completed tasks to view attachments
+        completedAdapter.setOnItemClickListener(this::showTaskAttachmentsDialog);
+    }
+    private void showTaskAttachmentsDialog(Task task) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.task_attachment_dialog, null);
+        builder.setView(dialogView);
+
+        TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
+        dialogTitle.setText("Attachments: " + task.getTaskName());
+
+        TextView noAttachmentsText = dialogView.findViewById(R.id.no_attachments_text);
+        RecyclerView attachmentsRecyclerView = dialogView.findViewById(R.id.attachments_recycler_view);
+        Button btnClose = dialogView.findViewById(R.id.btn_close);
+
+        List<Map<String, String>> attachments = task.getAttachments();
+
+        if (attachments == null || attachments.isEmpty()) {
+            noAttachmentsText.setVisibility(View.VISIBLE);
+            attachmentsRecyclerView.setVisibility(View.GONE);
+        } else {
+            noAttachmentsText.setVisibility(View.GONE);
+            attachmentsRecyclerView.setVisibility(View.VISIBLE);
+
+            // Set up RecyclerView
+            attachmentsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+            AttachmentAdapter attachmentAdapter = new AttachmentAdapter(this, attachments);
+            attachmentsRecyclerView.setAdapter(attachmentAdapter);
+        }
+
+        AlertDialog dialog = builder.create();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+    private void uploadFilesToDrive(ArrayList<Uri> files) {
+        try {
+            // Create a share intent with multiple files
+            Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+            shareIntent.setType("*/*");
+
+            // Try to set Google Drive as target app
+            shareIntent.setPackage("com.google.android.apps.docs");
+
+            // Create ArrayList of URIs for attachments
+            ArrayList<Uri> uris = new ArrayList<>();
+
+            // List to store file information
+            List<Map<String, String>> fileAttachments = new ArrayList<>();
+
+            // Add all selected files to the intent
+            for (Uri fileUri : files) {
+                try {
+                    // Create a file in app's cache directory
+                    String fileName = getFileNameFromUri(fileUri);
+                    File cacheFile = createCacheFile(fileUri, fileName);
+
+                    // Get content URI through FileProvider
+                    Uri contentUri = FileProvider.getUriForFile(
+                            this,
+                            "com.example.milestonemk_4.fileprovider", // Must match the authority in your manifest
+                            cacheFile
+                    );
+
+                    // Add to list with permission
+                    uris.add(contentUri);
+
+                    // Save file information to the list
+                    Map<String, String> fileInfo = new HashMap<>();
+                    fileInfo.put("name", fileName);
+                    fileInfo.put("uri", contentUri.toString());
+                    fileAttachments.add(fileInfo);
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error preparing file: " + e.getMessage());
+                }
+            }
+
+            // Put URIs as extra
+            shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+
+            // Add task name as subject
+            if (currentCompletedTask != null) {
+                shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Files for task: " + currentCompletedTask.getTaskName());
+
+                // Save file attachments to the task in Firestore
+                saveAttachmentsToTask(currentCompletedTask, fileAttachments);
+            }
+
+            // Grant read permissions
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // Try to start the activity
+            try {
+                startActivity(shareIntent);
+            } catch (ActivityNotFoundException e) {
+                // If Google Drive app is not found, try a more generic intent
+                Intent genericShareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                genericShareIntent.setType("*/*");
+                genericShareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                startActivity(Intent.createChooser(genericShareIntent, "Upload files using"));
+            }
+
+            Toast.makeText(this, "Preparing files for upload", Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading files: " + e.getMessage());
+            Toast.makeText(this, "Error preparing files for upload", Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void saveAttachmentsToTask(Task task, List<Map<String, String>> attachments) {
+        if (task == null || attachments == null || attachments.isEmpty()) {
+            return;
+        }
+
+        // Find the task document in Firestore
+        db.collection("projects")
+                .document(projectId)
+                .collection("tasks")
+                .whereEqualTo("taskName", task.getTaskName())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.isEmpty()) {
+                        DocumentSnapshot taskDoc = snapshot.getDocuments().get(0);
+
+                        // Update the task with attachments
+                        db.collection("projects")
+                                .document(projectId)
+                                .collection("tasks")
+                                .document(taskDoc.getId())
+                                .update("attachments", attachments)
+                                .addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(this, "Attachments saved successfully", Toast.LENGTH_SHORT).show();
+                                    // Update local task object
+                                    task.setAttachments(attachments);
+                                    // Refresh the task list
+                                    fetchTasks();
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Error saving attachments: " + e.getMessage());
+                                    Toast.makeText(this, "Failed to save attachments", Toast.LENGTH_SHORT).show();
+                                });
+                    }
+                });
+    }
     @SuppressLint("NotifyDataSetChanged")
     private void fetchTasks() {
         db.collection("projects")
@@ -849,11 +934,19 @@ public class project_detail extends AppCompatActivity {
                         String assignedUserId = doc.getString("assignedUserId");
                         String assignedUsername = doc.getString("assignedUsername");
 
+                        // Retrieve attachments from Firestore
+                        List<Map<String, String>> attachments = (List<Map<String, String>>) doc.get("attachments");
+
                         Task task = new Task(taskName, status, stage);
 
                         // Set assigned user information
                         task.setAssignedUserId(assignedUserId);
                         task.setAssignedUsername(assignedUsername);
+
+                        // Set attachments if they exist
+                        if (attachments != null && !attachments.isEmpty()) {
+                            task.setAttachments(attachments);
+                        }
 
                         if (stage == null || stage.equals("To Do")) {
                             toDoList.add(task);
@@ -870,6 +963,7 @@ public class project_detail extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
+
 
     @Override
     protected void onStart() {

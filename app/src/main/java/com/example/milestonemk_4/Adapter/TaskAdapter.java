@@ -26,14 +26,23 @@ import java.util.List;
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
     private final List<Task> taskList;
     private OnItemLongClickListener longClickListener;
+    private OnItemClickListener clickListener;
     private final FirebaseFirestore db;
 
     public interface OnItemLongClickListener {
         void onItemLongClick(Task task, View view);
     }
 
+    public interface OnItemClickListener {
+        void onItemClick(Task task);
+    }
+
     public void setOnItemLongClickListener(OnItemLongClickListener listener) {
         this.longClickListener = listener;
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.clickListener = listener;
     }
 
     public TaskAdapter(List<Task> taskList) {
@@ -79,7 +88,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         }
 
         // Get assignment information from Firebase
-        // Assuming the Task model has a field for assignedTo that contains the user ID
         if (task.getAssignedUserId() != null && !task.getAssignedUserId().isEmpty()) {
             loadUserData(task.getAssignedUserId(), holder.assignedAvatar, holder.assignedUsername);
         } else {
@@ -88,12 +96,29 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.assignedAvatar.setImageResource(R.drawable.default_profile);
         }
 
+        // Set long click listener for drag operations
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
                 longClickListener.onItemLongClick(task, holder.itemView);
             }
             return true;
         });
+
+        // Add click listener for viewing attachments (for completed tasks)
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null && "Completed".equals(task.getStage())) {
+                clickListener.onItemClick(task);
+            }
+        });
+
+        // Add attachment indicator if task has attachments
+        if (task.getAttachments() != null && !task.getAttachments().isEmpty()) {
+            // You can add a visual indicator here, for example:
+            holder.taskName.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.baseline_attachment_24, 0);
+            holder.taskName.setCompoundDrawablePadding(8);
+        } else {
+            holder.taskName.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+        }
     }
 
     @SuppressLint("SetTextI18n")

@@ -1,5 +1,10 @@
 package com.example.milestonemk_4.model;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class Task {
     private String taskName;
     private String status;
@@ -7,6 +12,7 @@ public class Task {
     // Fields for user assignment
     private String assignedUserId;
     private String assignedUsername;
+    private List<Map<String, String>> attachments;
 
     public Task() {
 
@@ -16,6 +22,7 @@ public class Task {
         this.taskName = taskName;
         this.status = status;
         this.stage = "To Do";
+        this.attachments = new ArrayList<>();
     }
 
 //    public Task(String taskName, String status, String stage, String assignedUserId, String assignedUsername) {
@@ -55,5 +62,26 @@ public class Task {
     }
     public void setAssignedUsername(String assignedUsername) {
         this.assignedUsername = assignedUsername;
+    }
+    public List<Map<String, String>> getAttachments() {
+        if (attachments == null) {
+            attachments = new ArrayList<>();
+        }
+        return attachments;
+    }
+
+    public void setAttachments(List<Map<String, String>> attachments) {
+        this.attachments = attachments;
+    }
+
+    // Helper method to add an attachment
+    public void addAttachment(String fileName, String fileUri) {
+        if (attachments == null) {
+            attachments = new ArrayList<>();
+        }
+        Map<String, String> attachment = new HashMap<>();
+        attachment.put("name", fileName);
+        attachment.put("uri", fileUri);
+        attachments.add(attachment);
     }
 }
