@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,6 +28,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -93,6 +95,7 @@ public class project_detail extends AppCompatActivity {
 
     private boolean isDragging = false;
 
+    private ImageView streakImg;
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,9 +138,12 @@ public class project_detail extends AppCompatActivity {
     private void setupClickListeners() {
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
+        CardView streakBtn = findViewById(R.id.streak_btn);
 
         backBtn.setOnClickListener(v -> finish());
         openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
+
+        streakBtn.setOnClickListener(view -> Toast.makeText(this, "clicked", Toast.LENGTH_SHORT).show());
     }
     private void validateAndSetProjectDetails() {
         projectId = getIntent().getStringExtra("projectId");
