@@ -42,6 +42,7 @@ import com.example.milestonemk_4.model.Project;
 import com.example.milestonemk_4.model.Task;
 import com.example.milestonemk_4.model.User;
 import com.example.milestonemk_4.utils.TaskCompletionReminder;
+import com.example.milestonemk_4.utils.TaskStreakSystem;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -94,6 +95,11 @@ public class project_detail extends AppCompatActivity {
     private float lastTouchX;
 
     private boolean isDragging = false;
+    private ImageView streakFrogImg;
+    private TextView progressText;
+    private int totalTasks = 0;
+    private int completedTasks = 0;
+
 
     private ImageView streakImg;
     @SuppressLint("UseCompatLoadingForDrawables")
@@ -112,11 +118,34 @@ public class project_detail extends AppCompatActivity {
         setupDragListeners();
     }
 
+    private void updateStreakProgress() {
+        // Calculate total and completed tasks
+        totalTasks = toDoList.size() + inProgressList.size() + completedList.size();
+        completedTasks = completedList.size();
+
+        // Skip if no tasks (prevents division by zero and meaningless updates)
+        if (totalTasks == 0) {
+            return;
+        }
+
+        // Update the frog image based on completion percentage and check for evolution
+        int currentStage = TaskStreakSystem.updateFrogStageWithEvolution(this, streakFrogImg, totalTasks, completedTasks);
+
+        // Show a toast with motivational message when streak button is clicked
+        CardView streakBtn = findViewById(R.id.streak_btn);
+        streakBtn.setOnClickListener(view -> {
+            String message = TaskStreakSystem.getStreakMessage(currentStage);
+            int percentage = totalTasks > 0 ? (completedTasks * 100 / totalTasks) : 0;
+            Toast.makeText(this, message + " (" + percentage + "%)", Toast.LENGTH_SHORT).show();
+        });
+    }
+
     private void initializeVariables() {
         db = FirebaseFirestore.getInstance();
         userList = new ArrayList<>();
         screenWidth = getResources().getDisplayMetrics().widthPixels;
         selectedFiles = new ArrayList<>();
+        streakFrogImg = findViewById(R.id.streak_frog_img);
     }
 
     private void setupFilePickerLauncher() {
@@ -138,12 +167,9 @@ public class project_detail extends AppCompatActivity {
     private void setupClickListeners() {
         ImageButton openTasksDialog = findViewById(R.id.openTaskDialog);
         Button backBtn = findViewById(R.id.backBtn);
-        CardView streakBtn = findViewById(R.id.streak_btn);
 
         backBtn.setOnClickListener(v -> finish());
         openTasksDialog.setOnClickListener(view -> showAddTaskDialog(projectId));
-
-        streakBtn.setOnClickListener(view -> Toast.makeText(this, "clicked", Toast.LENGTH_SHORT).show());
     }
     private void validateAndSetProjectDetails() {
         projectId = getIntent().getStringExtra("projectId");
@@ -478,6 +504,8 @@ public class project_detail extends AppCompatActivity {
 
                     draggedTask = null;
                     isDragging = false;
+
+                    updateStreakProgress();
                 }
 
                 // Stop auto-scrolling after drop
@@ -867,6 +895,8 @@ public class project_detail extends AppCompatActivity {
                     toDoAdapter.notifyDataSetChanged();
                     inProgressAdapter.notifyDataSetChanged();
                     completedAdapter.notifyDataSetChanged();
+
+                    updateStreakProgress();
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
