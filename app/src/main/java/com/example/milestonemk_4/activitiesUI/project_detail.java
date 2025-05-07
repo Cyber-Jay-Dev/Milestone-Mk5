@@ -62,7 +62,6 @@ import java.util.Objects;
 public class project_detail extends AppCompatActivity {
 
     private static final String TAG = "ProjectDetail";
-    Dialog dialog;
     FirebaseFirestore db;
     String projectId;
 
