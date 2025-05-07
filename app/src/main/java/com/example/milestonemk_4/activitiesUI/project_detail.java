@@ -654,8 +654,6 @@ public class project_detail extends AppCompatActivity {
 
                                                 User user = new User(uid, username, email, avatarId, bgColor);
                                                 userList.add(user);
-
-                                                // Check if we've loaded all users
                                                 if (userList.size() == project.getAllowedUsers().size()) {
                                                     listener.onUsersLoaded(userList);
                                                 }
