@@ -1,8 +1,7 @@
 package com.example.milestonemk_4.activitiesUI;
 
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
-import android.app.Dialog;
+
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Intent;
@@ -16,7 +15,6 @@ import android.util.Log;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -57,7 +55,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class project_detail extends AppCompatActivity {
 
