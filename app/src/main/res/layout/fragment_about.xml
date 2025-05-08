@@ -1,17 +1,169 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/Light_Yellow"
     tools:context=".fragments.AboutFragment">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <RelativeLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="About Us Page"
-        android:textSize="30sp"
-        android:layout_centerInParent="true"/>
+        android:padding="16dp">
+
+        <!-- App Logo -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/ivAppLogo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="24dp"
+            app:cardCornerRadius="20dp">
+            <ImageView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:contentDescription="@string/milestone_app_logo"
+                android:background="@color/Emerald"
+                android:src="@drawable/logo" />
+        </androidx.cardview.widget.CardView>
 
 
-</RelativeLayout>
+        <!-- App Name -->
+        <TextView
+            android:id="@+id/tvAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/ivAppLogo"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="16dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/milestone"
+            android:textColor="@color/Emerald"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+
+        <!-- Section 1: About Milestone -->
+        <TextView
+            android:id="@+id/tvAboutHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tvAppName"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/about_milestone"
+            android:textColor="@color/Emerald"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <View
+            android:id="@+id/divider1"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_below="@id/tvAboutHeader"
+            android:layout_marginTop="8dp"
+            android:background="@color/Emerald" />
+
+        <TextView
+            android:id="@+id/tvAboutContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/divider1"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/the_milestone_focuses_on_implementing_a_task_management_system_within_the_milestone_app_enabling_users_to_create_view_and_organize_tasks_across_three_stages_to_do_in_progress_and_completed_it_includes_integrating_firestore_to_store_and_retrieve_task_data_designing_a_user_interface_with_multiple_recyclerviews_and_adding_drag_and_drop_functionality_to_move_tasks_between_stages_the_goal_is_to_provide_a_seamless_and_interactive_way_for_users_to_manage_their_project_tasks_with_real_time_updates_reflected_in_the_firestore_database"
+            android:textColor="@color/Black"
+            android:textSize="16sp" />
+
+        <!-- Section 2: Purpose and Vision -->
+        <TextView
+            android:id="@+id/tvPurposeHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tvAboutContent"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/purpose_and_vision"
+            android:textColor="@color/Emerald"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <View
+            android:id="@+id/divider2"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_below="@id/tvPurposeHeader"
+            android:layout_marginTop="8dp"
+            android:background="@color/Emerald" />
+
+        <TextView
+            android:id="@+id/tvPurposeContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/divider2"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/milestone_is_a_mobile_app_designed_for_senior_high_school_it_students_that_uses_gamification_to_help_them_manage_tasks_and_reduce_procrastination_a_virtual_frog_grows_as_users_complete_goals_promoting_better_time_management_and_productivity_the_app_aims_to_empower_users_to_work_smarter_by_combining_technology_and_motivation_becoming_a_leading_productivity_tool_that_fosters_better_habits_and_task_management_while_providing_a_fun_and_engaging_experience"
+            android:textColor="@color/Black"
+            android:textSize="16sp" />
+
+        <!-- Frog Mascot Image -->
+        <ImageView
+            android:id="@+id/ivFrogMascot"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_below="@id/tvPurposeContent"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="16dp"
+            android:contentDescription="@string/milestone_frog_mascot"
+            android:src="@drawable/frog_stage_1" />
+
+        <!-- Section 3: About the Developer -->
+        <TextView
+            android:id="@+id/tvDeveloperHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/ivFrogMascot"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/about_the_developer"
+            android:textColor="@color/Emerald"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <View
+            android:id="@+id/divider3"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_below="@id/tvDeveloperHeader"
+            android:layout_marginTop="8dp"
+            android:background="@color/Emerald" />
+
+        <TextView
+            android:id="@+id/tvDeveloperContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/divider3"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/this_application_was_developed_as_part_of_a_capstone_project_for_sti_college_balayan_demonstrating_practical_expertise_in_mobile_application_development_and_cloud_integration"
+            android:textColor="@color/Black"
+            android:textSize="16sp" />
+
+        <!-- Version Info -->
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="8dp"
+            android:layout_below="@+id/tvDeveloperContent"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="-19dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/version_9_8_3"
+            android:textColor="@color/Black"
+            android:textSize="14sp" />
+
+    </RelativeLayout>
+</ScrollView>
