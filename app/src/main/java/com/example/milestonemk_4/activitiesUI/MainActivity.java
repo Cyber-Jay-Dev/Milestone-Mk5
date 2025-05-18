@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -38,6 +39,11 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private DrawerLayout drawerLayout;
@@ -83,6 +89,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(R.id.nav_home);
         }
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            checkPendingNotifications();
+        }
+    }
+
 
     @SuppressLint("SetTextI18n")
     private void updateNavHeader(NavigationView navigationView) {
@@ -166,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return R.drawable.default_profile;
         }
     }
+
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         Fragment selectedFragment = null;
@@ -227,6 +244,78 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
     }
+
+    private void checkPendingNotifications() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        String userId = currentUser.getUid();
+        Log.d("MainActivity", "Checking pending notifications for user: " + userId);
+
+        // Update FCM token if one was stored while user was logged out
+        SharedPreferences prefs = getSharedPreferences("FCM_PREFS", Context.MODE_PRIVATE);
+        String pendingToken = prefs.getString("pending_fcm_token", null);
+        if (pendingToken != null) {
+            Log.d("MainActivity", "Found pending FCM token, updating for current user");
+
+            // Update token in Firestore
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("fcmToken", pendingToken);
+
+            FirebaseFirestore.getInstance().collection("users").document(userId)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d("MainActivity", "FCM Token successfully updated on login");
+                        // Clear the pending token
+                        prefs.edit().remove("pending_fcm_token").apply();
+                    })
+                    .addOnFailureListener(e -> Log.e("MainActivity", "Error updating FCM token on login", e));
+        }
+
+        // Check for unread notifications
+        FirebaseFirestore.getInstance().collection("users").document(userId)
+                .collection("notifications")
+                .whereEqualTo("read", false)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(10)  // Only get the most recent 10 unread notifications
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (queryDocumentSnapshots.isEmpty()) {
+                        Log.d("MainActivity", "No unread notifications found");
+                        return;
+                    }
+
+                    Log.d("MainActivity", "Found " + queryDocumentSnapshots.size() + " unread notifications");
+
+                    // Process each unread notification
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        try {
+                            Map<String, Object> data = document.getData();
+
+                            // Check if it's a collaboration notification
+                            if ("collaboration".equals(data.get("type"))) {
+                                String projectId = (String) data.get("projectId");
+                                String projectTitle = (String) data.get("projectTitle");
+                                String addedBy = (String) data.get("addedBy");
+
+                                // Create a local notification for each unread notification
+                                // This ensures the user sees notifications even if FCM failed
+                                com.example.milestonemk_4.utils.CollaboratorNotificationService
+                                        .sendCollaboratorNotification(this, projectId, projectTitle, addedBy);
+
+                                // Optional: Mark as read if you don't want to show it again
+                                 document.getReference().update("read", true);
+                            }
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Error processing notification: " + document.getId(), e);
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("MainActivity", "Error fetching notifications", e));
+    }
+
+
+
 
     @Override
     public void onBackPressed() {

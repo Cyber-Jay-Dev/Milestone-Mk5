@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Task Completed!"
+        android:text="@string/task_completed"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -18,7 +18,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Would you like to attach files to this task?"
+        android:text="@string/would_you_like_to_attach_files_to_this_task"
         android:textSize="16sp"
         android:gravity="center"
         android:layout_marginBottom="24dp"/>
@@ -33,7 +33,7 @@
             android:id="@+id/btn_skip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Skip"
+            android:text="@string/skip"
             android:layout_marginEnd="16dp"
             android:backgroundTint="@android:color/darker_gray"/>
 
@@ -41,7 +41,7 @@
             android:id="@+id/btn_send_files"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send Files"
+            android:text="@string/send_files"
             android:backgroundTint="@color/Emerald"/>
     </LinearLayout>
 </LinearLayout>

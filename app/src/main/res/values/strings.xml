@@ -46,4 +46,8 @@
     <string name="the_milestone_focuses_on_implementing_a_task_management_system_within_the_milestone_app_enabling_users_to_create_view_and_organize_tasks_across_three_stages_to_do_in_progress_and_completed_it_includes_integrating_firestore_to_store_and_retrieve_task_data_designing_a_user_interface_with_multiple_recyclerviews_and_adding_drag_and_drop_functionality_to_move_tasks_between_stages_the_goal_is_to_provide_a_seamless_and_interactive_way_for_users_to_manage_their_project_tasks_with_real_time_updates_reflected_in_the_firestore_database">The milestone focuses on implementing a task management system within the Milestone app, enabling users to create, view, and organize tasks across three stages: To Do, In Progress, and Completed. It includes integrating Firestore to store and retrieve task data, designing a user interface with multiple RecyclerViews, and adding drag-and-drop functionality to move tasks between stages. The goal is to provide a seamless and interactive way for users to manage their project tasks, with real-time updates reflected in the Firestore database.</string>
     <string name="about_milestone">About Milestone</string>
     <string name="milestone">Milestone</string>
+    <string name="task_completed">Task Completed!</string>
+    <string name="would_you_like_to_attach_files_to_this_task">Would you like to attach files to this task?</string>
+    <string name="skip">Skip</string>
+    <string name="send_files">Send Files</string>
 </resources>
